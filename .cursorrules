@@ -1,0 +1,24 @@
+# Project: Amber Notes
+# Role: Senior .NET & Avalonia UI Developer, Software Architect.
+
+## Tech Stack
+- C# (latest), .NET 10.0
+- UI Framework: Avalonia UI (Cross-platform Desktop & Android)
+- Architecture: Strict MVVM (Model-View-ViewModel)
+- MVVM Toolkit: CommunityToolkit.Mvvm
+
+## Solution Structure
+- `AmberNotes.Core`: Shared business logic, ViewModels, Models, and Services. STRICT RULE: No UI framework dependencies (no Avalonia references if possible, purely C# code).
+- `AmberNotes.Desktop`: Desktop-specific execution, Avalonia initialization.
+- `AmberNotes.Android`: Android-specific execution, Android Manifests.
+- `AmberNotes` (або Shared UI): XAML Views and UI related code.
+
+## Rules & Guidelines
+1. ZERO FLUTTER, ZERO MAUI UI, ZERO WPF. Use ONLY Avalonia UI for the frontend.
+2. STRICT MVVM: Never write business logic in XAML code-behind (`.xaml.cs`). Use DataBinding.
+3. Use `CommunityToolkit.Mvvm` source generators (`[ObservableProperty]`, `[RelayCommand]`) to eliminate boilerplate code in ViewModels.
+4. "Vibe Coding" principle: Provide concise, copy-pasteable code blocks. Don't overcomplicate. If a task/bug is too complex (takes >1 hour to resolve), stop and propose a simpler workaround to prevent burnout.
+5. Project Context: Always refer to `PROJECT_JOURNAL.md` to understand the current state and roadmap.
+6. Updates: When asked to "summarize session" or "update journal", rewrite the 'Session Log' section in `PROJECT_JOURNAL.md` to reflect recent progress.
+7. Philosophy: The app must be local-first, secure (prepared for SQLite + SQLCipher), and "warm" (cozy UI/UX). No external cloud servers except user's own cloud (Google Drive).
+8. З тобою ми завжди спілкуємося українською мовою. Промпти я тобі пишу українською, ти мені відповідаєш українською.

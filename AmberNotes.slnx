@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="AmberNotes.Android/AmberNotes.Android.csproj">
+    <Deploy />
+  </Project>
+  <Project Path="AmberNotes.Desktop/AmberNotes.Desktop.csproj" />
+  <Project Path="AmberNotes/AmberNotes.csproj" />
+</Solution>
