@@ -12,5 +12,23 @@
     <vm:MainViewModel />
   </Design.DataContext>
 
-  <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+  <Grid>
+    <StackPanel VerticalAlignment="Center"
+                HorizontalAlignment="Center"
+                Spacing="20"
+                Margin="32">
+      <TextBlock Text="{Binding Greeting}"
+                 FontSize="22"
+                 TextWrapping="Wrap"
+                 TextAlignment="Center"
+                 MaxWidth="420"
+                 Margin="0,0,0,8" />
+      <Button Content="Створити"
+              Command="{Binding CreateNoteCommand}"
+              FontSize="16"
+              Padding="24,12"
+              HorizontalAlignment="Center"
+              MinWidth="160" />
+    </StackPanel>
+  </Grid>
 </UserControl>
