@@ -3,32 +3,92 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:AmberNotes.ViewModels"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             xmlns:models="using:AmberNotes.Models"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="550"
              x:Class="AmberNotes.Views.MainView"
              x:DataType="vm:MainViewModel">
+
   <Design.DataContext>
-    <!-- This only sets the DataContext for the previewer in an IDE,
-         to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
     <vm:MainViewModel />
   </Design.DataContext>
 
-  <Grid>
-    <StackPanel VerticalAlignment="Center"
-                HorizontalAlignment="Center"
-                Spacing="20"
-                Margin="32">
-      <TextBlock Text="{Binding Greeting}"
-                 FontSize="22"
-                 TextWrapping="Wrap"
-                 TextAlignment="Center"
-                 MaxWidth="420"
-                 Margin="0,0,0,8" />
-      <Button Content="Створити"
-              Command="{Binding CreateNoteCommand}"
-              FontSize="16"
-              Padding="24,12"
-              HorizontalAlignment="Center"
-              MinWidth="160" />
-    </StackPanel>
+  <Grid RowDefinitions="Auto,*">
+
+    <!-- ── Toolbar ── -->
+    <Border Grid.Row="0"
+            Padding="16,10"
+            BorderThickness="0,0,0,1"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <Button Content="＋ Створити"
+                Command="{Binding CreateNoteCommand}"
+                Padding="14,7" />
+        <Button Content="✏ Редагувати"
+                Command="{Binding EditNoteCommand}"
+                Padding="14,7" />
+        <Button Content="🗑 Видалити"
+                Command="{Binding DeleteNoteCommand}"
+                Padding="14,7" />
+      </StackPanel>
+    </Border>
+
+    <!-- ── Notes list ── -->
+    <Grid Grid.Row="1">
+
+      <!-- Empty state -->
+      <TextBlock Text="Нотаток ще немає. Натисніть «＋ Створити»."
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center"
+                 Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                 FontSize="15"
+                 IsVisible="{Binding !Notes.Count}" />
+
+      <ListBox ItemsSource="{Binding Notes}"
+               SelectedItem="{Binding SelectedNote}"
+               Margin="0">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="models:Note">
+            <Grid ColumnDefinitions="*,Auto" Margin="4,6">
+
+              <!-- Left: title + content preview -->
+              <StackPanel Grid.Column="0" Spacing="2">
+                <TextBlock Text="{Binding Title}"
+                           FontWeight="SemiBold"
+                           FontSize="14"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding Content}"
+                           FontSize="12"
+                           MaxLines="2"
+                           TextTrimming="CharacterEllipsis"
+                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+              </StackPanel>
+
+              <!-- Right: date + type badge -->
+              <StackPanel Grid.Column="1"
+                          Spacing="4"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Top"
+                          Margin="12,0,0,0">
+                <TextBlock Text="{Binding NoteDateTime, StringFormat='{}{0:dd.MM.yyyy}'}"
+                           FontSize="11"
+                           HorizontalAlignment="Right"
+                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                <Border CornerRadius="4"
+                        Padding="6,2"
+                        HorizontalAlignment="Right"
+                        Background="{DynamicResource SystemAccentColorLight2}">
+                  <TextBlock Text="{Binding Type}"
+                             FontSize="10"
+                             Foreground="White" />
+                </Border>
+              </StackPanel>
+
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+    </Grid>
+
   </Grid>
 </UserControl>

@@ -1,11 +1,11 @@
+using System;
+using System.IO;
 using AmberNotes.Services;
 using AmberNotes.ViewModels;
 using AmberNotes.Views;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using System;
-using System.IO;
 
 namespace AmberNotes
 {
@@ -18,28 +18,34 @@ namespace AmberNotes
 
         public override void OnFrameworkInitializationCompleted()
         {
-            // ── Database initialization ───────────────────────────────────────
-            var dbPath = GetDatabasePath();
+            // ── Database & repositories ───────────────────────────────────────
+            var dbPath    = GetDatabasePath();
             var dbService = new DatabaseService(dbPath);
             dbService.Initialize();
+
+            var noteRepo = new NoteRepository(dbService);
+            var bookRepo = new BookRepository(dbService);
             // ─────────────────────────────────────────────────────────────────
 
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
                 desktop.MainWindow = new MainWindow
                 {
-                    DataContext = new MainViewModel()
+                    DataContext = new MainViewModel(noteRepo, bookRepo)
                 };
             }
             else if (ApplicationLifetime is IActivityApplicationLifetime activityLifetime)
             {
-                activityLifetime.MainViewFactory = () => new MainView { DataContext = new MainViewModel() };
+                activityLifetime.MainViewFactory = () => new MainView
+                {
+                    DataContext = new MainViewModel(noteRepo, bookRepo)
+                };
             }
             else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
             {
                 singleViewPlatform.MainView = new MainView
                 {
-                    DataContext = new MainViewModel()
+                    DataContext = new MainViewModel(noteRepo, bookRepo)
                 };
             }
 
@@ -55,8 +61,8 @@ namespace AmberNotes
         {
             var folder = Environment.GetFolderPath(
                 OperatingSystem.IsAndroid()
-                    ? Environment.SpecialFolder.Personal          // Android app-private storage
-                    : Environment.SpecialFolder.LocalApplicationData); // Desktop
+                    ? Environment.SpecialFolder.Personal
+                    : Environment.SpecialFolder.LocalApplicationData);
 
             return Path.Combine(folder, "AmberNotes", "ambernotes.db");
         }

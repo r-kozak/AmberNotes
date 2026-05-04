@@ -17,28 +17,33 @@ Amber Notes — це кросплатформний інструмент для 
 - [x] Крок 2: Створення PROJECT_JOURNAL.md.
 - [x] Крок 3: Впровадження .cursorrules для ШІ.
 - [x] Крок 4: Базовий UI (Головне вікно з кнопкою "Створити" і тестовим записом).
-**Поточна версія:** v0.2: SQLite Local (Unencrypted)
+
+**Реалізована версія:** v0.2: SQLite Local (Unencrypted)
 - [x] Крок 5: Підключення Microsoft.Data.Sqlite.
 - [x] Крок 6: Створення таблиці Books (Id, Name, Default [true/false]).
-<<<<<<< HEAD
 - [x] Крок 7: Створення таблиці Notes (Id, Title, Content, NoteDateTime, CreatedAt, UpdatedAt, Type: Public/Private). Налаштування зв'язків між таблицями Books та Notes, як One-to-Many.
-- [ ] Крок 8: Реалізація відображення вікна редагування нотатки з полями (Заголовок, Текст, Книга, Тип, Дата запису).
-- [ ] Крок 9: Реалізація відображення списку створених нотаток та базового CRUD (створення, читання, редагування, видалення).
+- [x] Крок 8: Реалізація відображення вікна редагування нотатки з полями (Заголовок, Текст, Книга, Тип, Дата запису).
+- [x] Крок 9: Реалізація відображення списку створених нотаток та базового CRUD (створення, читання, редагування, видалення).
 
 ## Журнал сесій (Session Log)
-### 2026-05-03 - Ініціалізація проєкту
+### 2026-05-03 — Ініціалізація проєкту
 - **Зроблено:** Створено структуру проєкту (.NET + Avalonia UI). Додано `PROJECT_JOURNAL.md` для збереження контексту ШІ.
-- **Зроблено:** Налаштувати правила для Cursor AI (`.cursorrules`) та створити базовий інтерфейс з тестовими даними.
+- **Зроблено:** Налаштовано правила для Cursor AI (`.cursorrules`) та створено базовий інтерфейс з тестовими даними.
+
 ### 2026-05-03 — Крок 4: базовий UI
-- **Зроблено:** `MainViewModel`: `Greeting` з `[ObservableProperty]`, команда `CreateNote` з `[RelayCommand]` (оновлення привітання після «Створити»).
-- **Зроблено:** `MainView.axaml`: центрований `StackPanel`, `TextBlock` + кнопка з відступами та розмірами шрифту.
-- **Наступний крок:** Продовжити roadmap після Кроку 4 (модель нотаток, навігація тощо за планом).
+- **Зроблено:** `MainViewModel`: `Greeting` з `[ObservableProperty]`, команда `CreateNote` з `[RelayCommand]`.
+- **Зроблено:** `MainView.axaml`: центрований `StackPanel`, `TextBlock` + кнопка.
+
 ### 2026-05-04 — Кроки 5-7: Інфраструктура SQLite БД
 - **Зроблено (Крок 5):** Підключено `Microsoft.Data.Sqlite` v9.0.4 через Central Package Management (`Directory.Packages.props`). Пакет додано до `AmberNotes.csproj`.
-- **Зроблено (Крок 6):** Створено модель `Book` (`AmberNotes/Models/Book.cs`) з полями `Id`, `Name`, `IsDefault`. `DatabaseService` створює таблицю `Books` та автоматично сідить запис "My Notes" (IsDefault=1) при першому запуску.
-- **Зроблено (Крок 7):** Створено enum `NoteType` (Public/Private) та модель `Note` (`AmberNotes/Models/Note.cs`) з полями `Id`, `Title`, `Content`, `NoteDateTime`, `CreatedAt`, `UpdatedAt`, `Type`, `BookId` (FK). `DatabaseService` створює таблицю `Notes` з `FOREIGN KEY (BookId) REFERENCES Books(Id) ON DELETE CASCADE`.
-- **Зроблено:** Створено `DatabaseService` (`AmberNotes/Services/DatabaseService.cs`) — ініціалізація БД, створення таблиць у транзакції, сід дефолтної книги.
-- **Зроблено:** `App.axaml.cs` оновлено — `DatabaseService.Initialize()` викликається при старті. Шлях до БД: Desktop → `%LOCALAPPDATA%\AmberNotes\ambernotes.db`, Android → app-private storage.
-- **Результат:** `dotnet build` — **succeeded** ✅ (0 помилок, 0 попереджень).
-- **Наступний крок:** Кроки 8-9 — UI редагування нотатки та список нотаток з CRUD.
+- **Зроблено (Крок 6):** Створено модель `Book` (`Models/Book.cs`) з полями `Id`, `Name`, `IsDefault`. `DatabaseService` створює таблицю `Books` та сідить "My Notes" (IsDefault=1) при першому запуску.
+- **Зроблено (Крок 7):** Створено enum `NoteType` (Public/Private) та модель `Note` (`Models/Note.cs`) з полями `Id`, `Title`, `Content`, `NoteDateTime`, `CreatedAt`, `UpdatedAt`, `Type`, `BookId` (FK). Таблиця `Notes` з `FOREIGN KEY (BookId) REFERENCES Books(Id) ON DELETE CASCADE`.
+- **Зроблено:** `DatabaseService` (`Services/DatabaseService.cs`) — ініціалізація БД у транзакції, платформо-незалежний шлях (Desktop → `%LOCALAPPDATA%\AmberNotes\ambernotes.db`).
+- **Результат:** `dotnet build` — **succeeded** ✅
 
+### 2026-05-04 — Кроки 8-9: UI та CRUD
+- **Зроблено (Крок 8):** `NoteEditViewModel` + `NoteEditView.axaml` — вікно редагування/створення нотатки з полями: Заголовок, Текст, Книга (ComboBox), Тип (ComboBox: Public/Private), Дата запису (CalendarDatePicker). Кнопки «Зберегти» / «Скасувати».
+- **Зроблено (Крок 9):** `NoteRepository` (`Services/NoteRepository.cs`) — повний CRUD (GetAll, GetById, Create, Update, Delete) з JOIN на Books. `BookRepository` (`Services/BookRepository.cs`) — GetAll, GetDefault. `MainViewModel` оновлено: `ObservableCollection<Note>`, команди `CreateNote`, `EditNote`, `DeleteNote` (з CanExecute). `MainView.axaml` оновлено: тулбар з кнопками, `ListBox` зі списком нотаток (заголовок, превʼю тексту, дата, бейдж типу), empty-state повідомлення.
+- **Зроблено:** `App.axaml.cs` — передає `NoteRepository` та `BookRepository` у `MainViewModel` через конструктор.
+- **Результат:** `dotnet build` — **succeeded** ✅ (0 помилок)
+- **Наступний крок:** v0.3 — покращення UI/UX, стилізація, можливо навігація між книгами.

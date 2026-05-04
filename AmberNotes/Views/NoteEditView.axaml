@@ -1,0 +1,92 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:AmberNotes.ViewModels"
+        mc:Ignorable="d"
+        x:Class="AmberNotes.Views.NoteEditView"
+        x:DataType="vm:NoteEditViewModel"
+        Title="{Binding WindowTitle}"
+        Width="560" Height="520"
+        MinWidth="400" MinHeight="420"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True">
+
+  <Design.DataContext>
+    <vm:NoteEditViewModel />
+  </Design.DataContext>
+
+  <Grid RowDefinitions="*,Auto" Margin="24">
+
+    <!-- ── Fields ── -->
+    <ScrollViewer Grid.Row="0">
+      <StackPanel Spacing="14">
+
+        <!-- Title -->
+        <StackPanel Spacing="4">
+          <TextBlock Text="Заголовок" FontWeight="SemiBold" />
+          <TextBox Text="{Binding Title}"
+                   PlaceholderText="Введіть заголовок…"
+                   MaxLength="200" />
+        </StackPanel>
+
+        <!-- Content -->
+        <StackPanel Spacing="4">
+          <TextBlock Text="Текст нотатки" FontWeight="SemiBold" />
+          <TextBox Text="{Binding Content}"
+                   PlaceholderText="Введіть текст…"
+                   AcceptsReturn="True"
+                   TextWrapping="Wrap"
+                   MinHeight="140"
+                   MaxHeight="240" />
+        </StackPanel>
+
+        <!-- Book -->
+        <StackPanel Spacing="4">
+          <TextBlock Text="Книга" FontWeight="SemiBold" />
+          <ComboBox ItemsSource="{Binding Books}"
+                    SelectedItem="{Binding SelectedBook}"
+                    HorizontalAlignment="Stretch">
+            <ComboBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding Name}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+        </StackPanel>
+
+        <!-- Type -->
+        <StackPanel Spacing="4">
+          <TextBlock Text="Тип" FontWeight="SemiBold" />
+          <ComboBox ItemsSource="{Binding NoteTypes}"
+                    SelectedItem="{Binding SelectedType}"
+                    HorizontalAlignment="Stretch" />
+        </StackPanel>
+
+        <!-- Date -->
+        <StackPanel Spacing="4">
+          <TextBlock Text="Дата запису" FontWeight="SemiBold" />
+          <CalendarDatePicker SelectedDate="{Binding NoteDate}"
+                              HorizontalAlignment="Stretch" />
+        </StackPanel>
+
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- ── Buttons ── -->
+    <StackPanel Grid.Row="1"
+                Orientation="Horizontal"
+                HorizontalAlignment="Right"
+                Spacing="12"
+                Margin="0,16,0,0">
+      <Button Content="Скасувати"
+              Command="{Binding CancelCommand}"
+              MinWidth="100" Padding="16,8" />
+      <Button Content="Зберегти"
+              Command="{Binding SaveCommand}"
+              Classes="accent"
+              MinWidth="100" Padding="16,8" />
+    </StackPanel>
+
+  </Grid>
+</Window>
