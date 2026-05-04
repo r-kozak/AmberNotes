@@ -22,9 +22,6 @@ Amber Notes — це кросплатформний інструмент для 
 - [x] Крок 6: Створення таблиці Books (Id, Name, Default [true/false]).
 <<<<<<< HEAD
 - [x] Крок 7: Створення таблиці Notes (Id, Title, Content, NoteDateTime, CreatedAt, UpdatedAt, Type: Public/Private). Налаштування зв'язків між таблицями Books та Notes, як One-to-Many.
-=======
-- [x] Крок 7: Створення таблиці Notes (Id, Title, Content, NoteDateTime, CreatedAt, UpdatedAt, Type: Open/Closed). Налаштування зв'язків між таблицями Books та Notes, як One-to-Many.
->>>>>>> e8a396b418c6e0808eb2a1cf59db21e2ed53a876
 - [ ] Крок 8: Реалізація відображення вікна редагування нотатки з полями (Заголовок, Текст, Книга, Тип, Дата запису).
 - [ ] Крок 9: Реалізація відображення списку створених нотаток та базового CRUD (створення, читання, редагування, видалення).
 
@@ -39,11 +36,7 @@ Amber Notes — це кросплатформний інструмент для 
 ### 2026-05-04 — Кроки 5-7: Інфраструктура SQLite БД
 - **Зроблено (Крок 5):** Підключено `Microsoft.Data.Sqlite` v9.0.4 через Central Package Management (`Directory.Packages.props`). Пакет додано до `AmberNotes.csproj`.
 - **Зроблено (Крок 6):** Створено модель `Book` (`AmberNotes/Models/Book.cs`) з полями `Id`, `Name`, `IsDefault`. `DatabaseService` створює таблицю `Books` та автоматично сідить запис "My Notes" (IsDefault=1) при першому запуску.
-<<<<<<< HEAD
 - **Зроблено (Крок 7):** Створено enum `NoteType` (Public/Private) та модель `Note` (`AmberNotes/Models/Note.cs`) з полями `Id`, `Title`, `Content`, `NoteDateTime`, `CreatedAt`, `UpdatedAt`, `Type`, `BookId` (FK). `DatabaseService` створює таблицю `Notes` з `FOREIGN KEY (BookId) REFERENCES Books(Id) ON DELETE CASCADE`.
-=======
-- **Зроблено (Крок 7):** Створено enum `NoteType` (Open/Closed) та модель `Note` (`AmberNotes/Models/Note.cs`) з полями `Id`, `Title`, `Content`, `NoteDateTime`, `CreatedAt`, `UpdatedAt`, `Type`, `BookId` (FK). `DatabaseService` створює таблицю `Notes` з `FOREIGN KEY (BookId) REFERENCES Books(Id) ON DELETE CASCADE`.
->>>>>>> e8a396b418c6e0808eb2a1cf59db21e2ed53a876
 - **Зроблено:** Створено `DatabaseService` (`AmberNotes/Services/DatabaseService.cs`) — ініціалізація БД, створення таблиць у транзакції, сід дефолтної книги.
 - **Зроблено:** `App.axaml.cs` оновлено — `DatabaseService.Initialize()` викликається при старті. Шлях до БД: Desktop → `%LOCALAPPDATA%\AmberNotes\ambernotes.db`, Android → app-private storage.
 - **Результат:** `dotnet build` — **succeeded** ✅ (0 помилок, 0 попереджень).
