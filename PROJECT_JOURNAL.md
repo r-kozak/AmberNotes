@@ -46,4 +46,12 @@ Amber Notes — це кросплатформний інструмент для 
 - **Зроблено (Крок 9):** `NoteRepository` (`Services/NoteRepository.cs`) — повний CRUD (GetAll, GetById, Create, Update, Delete) з JOIN на Books. `BookRepository` (`Services/BookRepository.cs`) — GetAll, GetDefault. `MainViewModel` оновлено: `ObservableCollection<Note>`, команди `CreateNote`, `EditNote`, `DeleteNote` (з CanExecute). `MainView.axaml` оновлено: тулбар з кнопками, `ListBox` зі списком нотаток (заголовок, превʼю тексту, дата, бейдж типу), empty-state повідомлення.
 - **Зроблено:** `App.axaml.cs` — передає `NoteRepository` та `BookRepository` у `MainViewModel` через конструктор.
 - **Результат:** `dotnet build` — **succeeded** ✅ (0 помилок)
+
+### 2026-05-04 — Виправлення крашу на Android
+- **Проблема:** Android-версія падала з `NotSupportedException` при спробі створити `Window` (NoteEditView).
+- **Зроблено:** `NoteEditView` перетворено з `Window` на `UserControl`.
+- **Зроблено:** В `MainView.axaml` додано `DialogOverlay` (Panel + Border + ContentControl) для відображення діалогів на мобільних платформах.
+- **Зроблено:** В `MainView.axaml.cs` реалізовано адаптивну логіку: на Desktop створюється динамічне `Window` для `NoteEditView`, на Android використовується overlay.
+- **Результат:** Додаток стабільно працює на обох платформах. ✅
+
 - **Наступний крок:** v0.3 — покращення UI/UX, стилізація, можливо навігація між книгами.

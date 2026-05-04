@@ -1,16 +1,11 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:vm="using:AmberNotes.ViewModels"
-        mc:Ignorable="d"
-        x:Class="AmberNotes.Views.NoteEditView"
-        x:DataType="vm:NoteEditViewModel"
-        Title="{Binding WindowTitle}"
-        Width="560" Height="520"
-        MinWidth="400" MinHeight="420"
-        WindowStartupLocation="CenterOwner"
-        CanResize="True">
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:AmberNotes.ViewModels"
+             mc:Ignorable="d"
+             x:Class="AmberNotes.Views.NoteEditView"
+             x:DataType="vm:NoteEditViewModel">
 
   <Design.DataContext>
     <vm:NoteEditViewModel />
@@ -89,4 +84,4 @@
     </StackPanel>
 
   </Grid>
-</Window>
+</UserControl>

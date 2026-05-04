@@ -90,5 +90,20 @@
 
     </Grid>
 
+    <!-- Overlay for Android/SingleView dialogs -->
+    <Panel Name="DialogOverlay"
+           Grid.Row="0" Grid.RowSpan="2"
+           Background="#80000000"
+           IsVisible="False">
+      <Border Background="{DynamicResource SystemRegionBrush}"
+              CornerRadius="12"
+              Margin="16"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Stretch"
+              BoxShadow="0 4 20 0 #40000000">
+        <ContentControl Name="DialogContent" />
+      </Border>
+    </Panel>
+
   </Grid>
 </UserControl>
