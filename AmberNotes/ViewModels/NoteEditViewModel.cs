@@ -25,7 +25,7 @@ public partial class NoteEditViewModel : ViewModelBase
     private string _content = string.Empty;
 
     [ObservableProperty]
-    private DateTimeOffset _noteDate = DateTimeOffset.Now;
+    private DateTime? _noteDate = DateTime.Today;
 
     [ObservableProperty]
     private NoteType _selectedType = NoteType.Public;
@@ -69,7 +69,7 @@ public partial class NoteEditViewModel : ViewModelBase
             {
                 Title        = note.Title;
                 Content      = note.Content;
-                NoteDate     = new DateTimeOffset(note.NoteDateTime.ToLocalTime());
+                NoteDate     = note.NoteDateTime;
                 SelectedType = note.Type;
                 SelectedBook = Books.Count > 0
                     ? FindBookById(note.BookId) ?? Books[0]
@@ -95,7 +95,7 @@ public partial class NoteEditViewModel : ViewModelBase
             Id           = _noteId ?? 0,
             Title        = Title.Trim(),
             Content      = Content,
-            NoteDateTime = NoteDate.UtcDateTime,
+            NoteDateTime = NoteDate ?? DateTime.Today,
             Type         = SelectedType,
             BookId       = SelectedBook.Id
         };

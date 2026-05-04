@@ -129,7 +129,7 @@ public class NoteRepository
         Id           = r.GetInt32(0),
         Title        = r.GetString(1),
         Content      = r.GetString(2),
-        NoteDateTime = DateTime.Parse(r.GetString(3)).ToUniversalTime(),
+        NoteDateTime = DateTime.Parse(r.GetString(3)),
         CreatedAt    = DateTime.Parse(r.GetString(4)).ToUniversalTime(),
         UpdatedAt    = DateTime.Parse(r.GetString(5)).ToUniversalTime(),
         Type         = Enum.Parse<NoteType>(r.GetString(6)),
