@@ -107,4 +107,4 @@ MainWindow / AppView
 - **Зроблено (Крок 14):** Логіка ініціалізації повністю реалізована. Перший запуск — `CryptoService.IsFirstRun=true`, сіль ще не існує → LoginView показує Confirm-поле + кнопку «Створити сховище» → PBKDF2 генерує сіль + ключ → `TryUnlockWithKey()` + `Initialize()` → `SwitchToMain()`. Наступні запуски — сіль існує → `IsFirstRun=false` → тільки поле пароля + кнопка «Розблокувати» → PBKDF2 відтворює той самий ключ → верифікація `SELECT count(*) FROM sqlite_master`. Помилковий пароль → `SqliteException` → поля очищуються. `LoginViewModel` хелпери: `HasError`, `IsNotBusy`, `ButtonText`, `SubtitleText` — через `partial void On*Changed`.
 - **Результат:** `dotnet build` — **succeeded** ✅ (0 помилок, 0 попереджень)
 - **Статус v0.3:** ЗАВЕРШЕНО ✅
-- **Наступний крок:** v0.4 — покращення UX (стилізація MainView, теми, навігація між книгами / пошук).
+- **Наступний крок:** v0.4 — Markdown-редактор, публічний/приватний режим, світла/темна тема.
