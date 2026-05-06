@@ -13,6 +13,13 @@
 - `AmberNotes.Android`: Android-specific execution, Android Manifests.
 - `AmberNotes` (або Shared UI): XAML Views and UI related code.
 
+### UI Architecture & Window Management
+- **Single-Window Policy**: This is a strictly single-window application. NEVER create new windows, pop-ups, or dialogs using `Window.Show()` or `Window.ShowDialog()`.
+- **Navigation & State**: Use a `ContentControl` in the `MainWindow` to switch between different views (e.g., `LoginView`, `MainDashboardView`) by changing the `CurrentViewModel`.
+- **View Mapping**: Always use Avalonia `DataTemplates` in XAML to map ViewModels to their respective Views.
+- **In-Place Editing**: When a user creates or edits a note, update the content of the right panel (Detail view) within the same window. 
+- **Modals**: If a modal-like interaction is needed, implement it as a custom Z-index overlay (e.g., using a `Grid` with multiple layers) within the existing `MainView`.
+
 ## Rules & Guidelines
 1. ZERO FLUTTER, ZERO MAUI UI, ZERO WPF. Use ONLY Avalonia UI for the frontend.
 2. STRICT MVVM: Never write business logic in XAML code-behind (`.xaml.cs`). Use DataBinding.

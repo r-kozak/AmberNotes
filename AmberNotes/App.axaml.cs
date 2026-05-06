@@ -18,34 +18,45 @@ namespace AmberNotes
 
         public override void OnFrameworkInitializationCompleted()
         {
-            // ── Database & repositories ───────────────────────────────────────
+            // ── Infrastructure ────────────────────────────────────────────────
             var dbPath    = GetDatabasePath();
             var dbService = new DatabaseService(dbPath);
-            dbService.Initialize();
+            var cryptoSvc = new CryptoService(Path.GetDirectoryName(dbPath)!);
 
-            var noteRepo = new NoteRepository(dbService);
-            var bookRepo = new BookRepository(dbService);
+            // ── App-level navigation ──────────────────────────────────────────
+            var loginVm = new LoginViewModel(cryptoSvc, dbService);
+            var appVm   = new AppViewModel(loginVm);
+
+            // After successful login: build repositories and switch to main view
+            loginVm.LoginSucceeded += () =>
+            {
+                var noteRepo = new NoteRepository(dbService);
+                var bookRepo = new BookRepository(dbService);
+                appVm.SwitchToMain(noteRepo, bookRepo);
+            };
             // ─────────────────────────────────────────────────────────────────
 
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
+                // Desktop: AppViewModel drives MainWindow via ContentControl + ViewLocator
                 desktop.MainWindow = new MainWindow
                 {
-                    DataContext = new MainViewModel(noteRepo, bookRepo)
+                    DataContext = appVm
                 };
             }
             else if (ApplicationLifetime is IActivityApplicationLifetime activityLifetime)
             {
-                activityLifetime.MainViewFactory = () => new MainView
+                // Android: AppView is the mobile root (mirrors MainWindow structure)
+                activityLifetime.MainViewFactory = () => new AppView
                 {
-                    DataContext = new MainViewModel(noteRepo, bookRepo)
+                    DataContext = appVm
                 };
             }
             else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
             {
-                singleViewPlatform.MainView = new MainView
+                singleViewPlatform.MainView = new AppView
                 {
-                    DataContext = new MainViewModel(noteRepo, bookRepo)
+                    DataContext = appVm
                 };
             }
 

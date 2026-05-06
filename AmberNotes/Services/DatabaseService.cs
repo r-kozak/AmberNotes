@@ -1,11 +1,23 @@
+using System;
 using System.IO;
 using Microsoft.Data.Sqlite;
 
 namespace AmberNotes.Services;
 
 /// <summary>
-/// Manages the SQLite database lifecycle: initialization, schema creation,
-/// and provides a factory for opening connections.
+/// Manages the SQLCipher-encrypted database lifecycle.
+///
+/// Usage flow:
+///   1. Construct with the database file path.
+///   2. Call TryUnlockWithKey(hexKey) — derived externally via CryptoService (PBKDF2).
+///      Returns true on success; false if the key is wrong or the file is corrupt.
+///   3. Call Initialize() once after a successful unlock (safe to call every startup).
+///   4. Use OpenConnection() for all subsequent data access.
+///
+/// Encryption: AES-256 via SQLCipher.
+///   All connections apply  PRAGMA key = "x'hexKey'"  immediately on open.
+///   The raw hex key bypasses SQLCipher's own PBKDF2 because we run PBKDF2 ourselves
+///   (256,000 iterations, SHA-256) so the key material already has the required entropy.
 ///
 /// Database file location:
 ///   Desktop → %LOCALAPPDATA%\AmberNotes\ambernotes.db
@@ -14,36 +26,74 @@ namespace AmberNotes.Services;
 public class DatabaseService
 {
     private readonly string _dbPath;
-    private readonly string _connectionString;
+
+    // 64-char lowercase hex — never logged, cleared on unlock failure
+    private string? _hexKey;
 
     public DatabaseService(string dbPath)
     {
         _dbPath = dbPath;
-        _connectionString = new SqliteConnectionStringBuilder
+    }
+
+    /// <summary>True when the database file does not yet exist (first run).</summary>
+    public bool IsNewDatabase => !File.Exists(_dbPath);
+
+    /// <summary>
+    /// Attempts to open the database with the provided 256-bit hex key.
+    ///
+    /// Returns true  — key accepted; the key is stored for subsequent OpenConnection() calls.
+    /// Returns false — key rejected (wrong password, or file is not a SQLCipher database).
+    ///
+    /// Migration note: if an unencrypted v0.2 database is present, SQLCipher will fail to
+    /// read it and this method returns false. The caller (LoginViewModel) handles migration
+    /// by deleting the old file before re-calling this method.
+    ///
+    /// SECURITY: hexKey is never logged.
+    /// </summary>
+    public bool TryUnlockWithKey(string hexKey)
+    {
+        try
         {
-            DataSource = _dbPath,
-            Mode = SqliteOpenMode.ReadWriteCreate
-        }.ToString();
+            using var conn = OpenConnectionInternal(hexKey);
+
+            // Probe: if the key is correct SQLCipher can read the schema page
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT count(*) FROM sqlite_master;";
+            cmd.ExecuteScalar();
+
+            _hexKey = hexKey;
+            return true;
+        }
+        catch (SqliteException)
+        {
+            // Wrong key or corrupt/unencrypted file
+            _hexKey = null;
+            return false;
+        }
     }
 
     /// <summary>
-    /// Opens a new connection. Caller is responsible for disposing it.
+    /// Opens a new authenticated connection.
+    /// The caller is responsible for disposing it.
+    /// Throws <see cref="InvalidOperationException"/> if TryUnlockWithKey() was not called first.
     /// </summary>
     public SqliteConnection OpenConnection()
     {
-        var connection = new SqliteConnection(_connectionString);
-        connection.Open();
-        return connection;
+        if (_hexKey is null)
+            throw new InvalidOperationException(
+                "Database key not set. Call TryUnlockWithKey() before opening connections.");
+
+        return OpenConnectionInternal(_hexKey);
     }
 
     /// <summary>
-    /// Ensures the database file and all required tables exist.
+    /// Ensures the database directory and all required tables exist.
+    /// Must be called after a successful TryUnlockWithKey().
     /// Safe to call on every app startup (uses CREATE TABLE IF NOT EXISTS).
-    /// Also seeds a default Book if the Books table is empty.
+    /// Also seeds the default "My Notes" book on first run.
     /// </summary>
     public void Initialize()
     {
-        // Ensure the directory exists
         var directory = Path.GetDirectoryName(_dbPath);
         if (!string.IsNullOrEmpty(directory))
             Directory.CreateDirectory(directory);
@@ -56,6 +106,43 @@ public class DatabaseService
         SeedDefaultBook(connection, transaction);
 
         transaction.Commit();
+    }
+
+    /// <summary>
+    /// Deletes the database file from disk.
+    /// Used for the v0.2 → v0.3 migration: removes the legacy unencrypted database
+    /// so a fresh encrypted vault can be created on the same path.
+    /// </summary>
+    public void DeleteDatabaseFile()
+    {
+        if (File.Exists(_dbPath))
+            File.Delete(_dbPath);
+    }
+
+    // ── Internal helpers ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Opens a connection and immediately applies the SQLCipher key as raw hex bytes.
+    /// Using the  x'...'  hex syntax tells SQLCipher to use our pre-derived key directly,
+    /// skipping SQLCipher's own built-in PBKDF2 (we already did PBKDF2 externally).
+    /// </summary>
+    private SqliteConnection OpenConnectionInternal(string hexKey)
+    {
+        var connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = _dbPath,
+            Mode       = SqliteOpenMode.ReadWriteCreate,
+        }.ToString();
+
+        var connection = new SqliteConnection(connectionString);
+        connection.Open();
+
+        // MUST be the very first statement after Open()
+        using var keyCmd = connection.CreateCommand();
+        keyCmd.CommandText = $"PRAGMA key = \"x'{hexKey}'\";";
+        keyCmd.ExecuteNonQuery();
+
+        return connection;
     }
 
     // ── Schema ────────────────────────────────────────────────────────────────
@@ -71,8 +158,8 @@ public class DatabaseService
             """;
 
         using var cmd = connection.CreateCommand();
-        cmd.Transaction = transaction;
-        cmd.CommandText = sql;
+        cmd.Transaction  = transaction;
+        cmd.CommandText  = sql;
         cmd.ExecuteNonQuery();
     }
 
@@ -93,33 +180,25 @@ public class DatabaseService
             """;
 
         using var cmd = connection.CreateCommand();
-        cmd.Transaction = transaction;
-        cmd.CommandText = sql;
+        cmd.Transaction  = transaction;
+        cmd.CommandText  = sql;
         cmd.ExecuteNonQuery();
     }
 
     // ── Seed ──────────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Inserts a "My Notes" default book if no books exist yet.
-    /// </summary>
     private static void SeedDefaultBook(SqliteConnection connection, SqliteTransaction transaction)
     {
-        const string countSql = "SELECT COUNT(*) FROM Books;";
         using var countCmd = connection.CreateCommand();
-        countCmd.Transaction = transaction;
-        countCmd.CommandText = countSql;
+        countCmd.Transaction  = transaction;
+        countCmd.CommandText  = "SELECT COUNT(*) FROM Books;";
         var count = (long)(countCmd.ExecuteScalar() ?? 0L);
 
         if (count > 0) return;
 
-        const string insertSql = """
-            INSERT INTO Books (Name, IsDefault) VALUES ('My Notes', 1);
-            """;
-
         using var insertCmd = connection.CreateCommand();
-        insertCmd.Transaction = transaction;
-        insertCmd.CommandText = insertSql;
+        insertCmd.Transaction  = transaction;
+        insertCmd.CommandText  = "INSERT INTO Books (Name, IsDefault) VALUES ('My Notes', 1);";
         insertCmd.ExecuteNonQuery();
     }
 }

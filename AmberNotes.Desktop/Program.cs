@@ -1,4 +1,5 @@
-﻿using Avalonia;
+using Avalonia;
+using SQLitePCL;
 using System;
 
 namespace AmberNotes.Desktop
@@ -9,8 +10,14 @@ namespace AmberNotes.Desktop
         // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
         // yet and stuff might break.
         [STAThread]
-        public static void Main(string[] args) => BuildAvaloniaApp()
-            .StartWithClassicDesktopLifetime(args);
+        public static void Main(string[] args)
+        {
+            // Initialize SQLitePCLRaw provider (must be called before any SQLite usage)
+            Batteries_V2.Init();
+
+            BuildAvaloniaApp()
+                .StartWithClassicDesktopLifetime(args);
+        }
 
         // Avalonia configuration, don't remove; also used by visual designer.
         public static AppBuilder BuildAvaloniaApp()

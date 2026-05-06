@@ -1,7 +1,8 @@
-﻿using Android.App;
+using Android.App;
 using Android.Runtime;
 using Avalonia;
 using Avalonia.Android;
+using SQLitePCL;
 
 namespace AmberNotes.Android
 {
@@ -12,10 +13,17 @@ namespace AmberNotes.Android
         {
         }
 
+        public override void OnCreate()
+        {
+            // Initialize SQLitePCLRaw native provider before any SQLite usage
+            Batteries_V2.Init();
+            base.OnCreate();
+        }
+
         protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
         {
             return base.CustomizeAppBuilder(builder)
-            .WithInterFont();
+                .WithInterFont();
         }
     }
 }
