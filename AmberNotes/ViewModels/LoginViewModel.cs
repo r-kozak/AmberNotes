@@ -44,6 +44,25 @@ public partial class LoginViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isFirstRun;
 
+    // ── Computed helpers (UI binding) ─────────────────────────────────────────
+
+    /// <summary>True when ErrorMessage is non-empty. Used to show/hide the error panel.</summary>
+    public bool HasError  => !string.IsNullOrEmpty(ErrorMessage);
+
+    /// <summary>Inverted IsBusy — disables inputs and button while PBKDF2 is running.</summary>
+    public bool IsNotBusy => !IsBusy;
+
+    /// <summary>Button label adapts to the current mode.</summary>
+    public string ButtonText => IsFirstRun ? "Створити сховище" : "Розблокувати";
+
+    /// <summary>Subtitle adapts to the current mode.</summary>
+    public string SubtitleText => IsFirstRun
+        ? "Придумайте надійний майстер-пароль для захисту ваших нотаток"
+        : "Введіть майстер-пароль для доступу до вашого сховища";
+
+    partial void OnErrorMessageChanged(string? value) => OnPropertyChanged(nameof(HasError));
+    partial void OnIsBusyChanged(bool value)           => OnPropertyChanged(nameof(IsNotBusy));
+
     // ── Events ────────────────────────────────────────────────────────────────
 
     /// <summary>

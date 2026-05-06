@@ -1,0 +1,173 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AmberNotes.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
+             x:Class="AmberNotes.Views.LoginView"
+             x:DataType="vm:LoginViewModel"
+             Background="#2B1B10">
+
+    <!-- Enter key triggers submit from any focused field -->
+    <UserControl.KeyBindings>
+        <KeyBinding Gesture="Enter" Command="{Binding SubmitCommand}" />
+    </UserControl.KeyBindings>
+
+    <UserControl.Styles>
+        <!-- Amber-tinted TextBox — overrides Fluent theme for this screen -->
+        <Style Selector="TextBox">
+            <Setter Property="Background"            Value="#3A2212" />
+            <Setter Property="BorderBrush"           Value="#7A4A25" />
+            <Setter Property="Foreground"            Value="#F5E6C8" />
+            <Setter Property="CaretBrush"            Value="#FFBF00" />
+            <Setter Property="SelectionBrush"        Value="#80FFBF00" />
+            <Setter Property="CornerRadius"          Value="8" />
+            <Setter Property="Padding"               Value="12,10" />
+            <Setter Property="FontSize"              Value="14" />
+        </Style>
+        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="#FFBF00" />
+        </Style>
+        <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="#C49030" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid>
+
+        <!-- ── Centered login card ── -->
+        <Border CornerRadius="18"
+                Background="#3D2514"
+                Padding="44,38"
+                MaxWidth="400"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                BoxShadow="0 6 48 0 #A0000000">
+
+            <StackPanel Spacing="20">
+
+                <!-- Lock icon -->
+                <TextBlock Text="🔐"
+                           FontSize="54"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,2" />
+
+                <!-- App name + subtitle -->
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Amber Notes"
+                               FontSize="28"
+                               FontWeight="Bold"
+                               Foreground="#FFBF00"
+                               HorizontalAlignment="Center"
+                               LetterSpacing="0.5" />
+                    <TextBlock Text="{Binding SubtitleText}"
+                               FontSize="13"
+                               Foreground="#B8875A"
+                               HorizontalAlignment="Center"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               MaxWidth="300" />
+                </StackPanel>
+
+                <!-- Divider -->
+                <Border Height="1" Background="#5A3518" Margin="0,4" />
+
+                <!-- ── Password field ── -->
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Майстер-пароль"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Foreground="#D4A970"
+                               Margin="2,0,0,0" />
+                    <TextBox x:Name="PasswordInput"
+                             Text="{Binding Password}"
+                             PasswordChar="•"
+                             PlaceholderText="Введіть пароль..."
+                             IsEnabled="{Binding IsNotBusy}" />
+                </StackPanel>
+
+                <!-- ── Confirm password (first run only) ── -->
+                <StackPanel Spacing="6" IsVisible="{Binding IsFirstRun}">
+                    <TextBlock Text="Підтвердіть пароль"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Foreground="#D4A970"
+                               Margin="2,0,0,0" />
+                    <TextBox Text="{Binding ConfirmPassword}"
+                             PasswordChar="•"
+                             PlaceholderText="Повторіть пароль..."
+                             IsEnabled="{Binding IsNotBusy}" />
+                </StackPanel>
+
+                <!-- ── Error message ── -->
+                <Border Background="#3D0E0E"
+                        BorderBrush="#6B1A1A"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="12,9"
+                        IsVisible="{Binding HasError}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="⚠"
+                                   Foreground="#FF7070"
+                                   FontSize="14"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding ErrorMessage}"
+                                   Foreground="#FF9090"
+                                   FontSize="13"
+                                   TextWrapping="Wrap"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+
+                <!-- ── Submit button ── -->
+                <Button Content="{Binding ButtonText}"
+                        Command="{Binding SubmitCommand}"
+                        IsEnabled="{Binding IsNotBusy}"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"
+                        Padding="16,13"
+                        FontSize="15"
+                        FontWeight="SemiBold"
+                        CornerRadius="10">
+                    <Button.Styles>
+                        <Style Selector="Button">
+                            <Setter Property="Background" Value="#FFBF00" />
+                            <Setter Property="Foreground" Value="#1E100A" />
+                        </Style>
+                        <Style Selector="Button:pointerover /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#FFCF30" />
+                        </Style>
+                        <Style Selector="Button:pressed /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#E0A800" />
+                        </Style>
+                        <Style Selector="Button:disabled /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#6B5010" />
+                            <Setter Property="TextElement.Foreground" Value="#A08040" />
+                        </Style>
+                    </Button.Styles>
+                </Button>
+
+                <!-- ── Loading bar ── -->
+                <ProgressBar IsIndeterminate="True"
+                             IsVisible="{Binding IsBusy}"
+                             Foreground="#FFBF00"
+                             Background="#5A3518"
+                             Height="3"
+                             CornerRadius="2"
+                             Margin="0,-8,0,0" />
+
+                <!-- ── First-run security hint ── -->
+                <TextBlock IsVisible="{Binding IsFirstRun}"
+                           Text="💡 Цей пароль неможливо відновити. Запам'ятайте або збережіть його у надійному місці."
+                           FontSize="11"
+                           Foreground="#7A5535"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap"
+                           MaxWidth="300" />
+
+            </StackPanel>
+        </Border>
+
+    </Grid>
+</UserControl>
