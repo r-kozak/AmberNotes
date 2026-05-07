@@ -92,8 +92,9 @@ public partial class NoteEditViewModel : ViewModelBase
         }
         else
         {
-            // Create mode — pre-select default book
+            // Create mode — pre-select default book and type based on current mode
             SelectedBook = Books.Count > 0 ? Books[0] : null;
+            SelectedType = ModeService.Instance.IsPrivate ? NoteType.Private : NoteType.Public;
         }
     }
 
