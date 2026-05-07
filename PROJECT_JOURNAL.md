@@ -47,13 +47,13 @@ MainWindow / AppView
 ```
 
 ## Поточний статус (Roadmap)
-**Реалізована версія:** v0.1: Skeleton & MVVM
+**Реалізована версія:** v0.1: Skeleton & MVVM ✅
 - [x] Крок 1: Створення рішення (Core, Desktop, Android).
 - [x] Крок 2: Створення PROJECT_JOURNAL.md.
 - [x] Крок 3: Впровадження .cursorrules для ШІ.
 - [x] Крок 4: Базовий UI (Головне вікно з кнопкою "Створити" і тестовим записом).
 
-**Реалізована версія:** v0.2: SQLite Local (Unencrypted)
+**Реалізована версія:** v0.2: SQLite Local (Unencrypted) ✅
 - [x] Крок 5: Підключення Microsoft.Data.Sqlite.
 - [x] Крок 6: Створення таблиці Books (Id, Name, Default [true/false]).
 - [x] Крок 7: Створення таблиці Notes (Id, Title, Content, NoteDateTime, CreatedAt, UpdatedAt, Type: Public/Private). Налаштування зв'язків між таблицями Books та Notes, як One-to-Many.
@@ -66,6 +66,14 @@ MainWindow / AppView
 - [x] Крок 12: `LoginViewModel` (CommunityToolkit.Mvvm): обробка першого запуску/розблокування, PBKDF2 у фоні (`Task.Run`), очищення пароля з пам'яті. `AppViewModel` з `CurrentViewModel` для навігації. `AppView.axaml` (мобільний root). `MainWindow.axaml` оновлено на `ContentControl`.
 - [x] Крок 13: `LoginView.axaml` — повноекранний екран авторизації у бурштинових тонах (#2B1B10 фон, #FFBF00 акцент). Поле пароля (PasswordChar), поле підтвердження (IsVisible=IsFirstRun), панель помилок, кнопка «Створити сховище»/«Розблокувати», ProgressBar під час PBKDF2.
 - [x] Крок 14: Логіка ініціалізації: перший запуск → `CryptoService.IsFirstRun=true` → показ Confirm-поля + створення сховища; наступні запуски → `IsFirstRun=false` → розблокування. Міграційний guard v0.2→v0.3. `dotnet build` **succeeded** ✅ (0 помилок, 0 попереджень).
+
+**Поточна версія:** v0.4: Writing Experience & Modes 
+- [ ] **Крок 15: Themes.** Створення ResourceDictionary для "Amber Noir" та "Saffron Linen". Налаштування DynamicResource для всіх компонентів.
+- [ ] **Крок 16: ModeSwitcher.** Реалізація сервісу перемикання режимів та UI-контрола в Header.
+- [ ] **Крок 17: Security Bridge.** Оновлення логіки входу: запит пароля лише для Приватного режиму. Розділення потоків даних Public/Private.
+- [ ] **Крок 18: Markdown Core.** Підключення Markdig. Створення NoteEditorView з підтримкою Markdown-розмітки.
+- [ ] **Крок 19: Single-Window Navigation.** Впровадження ViewLocator або Router для зміни екранів (List <-> Editor) без нових вікон.
+
 
 ## Журнал сесій (Session Log)
 ### 2026-05-03 — Ініціалізація проєкту
