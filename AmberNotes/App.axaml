@@ -24,6 +24,11 @@
 
     <Application.Styles>
         <FluentTheme />
+        <!--
+            Markdown.Avalonia 12.0.0-a3: MarkdownScrollViewer auto-registers its styles
+            when the MarkdownScrollViewer control is first instantiated — no explicit
+            MarkdownStyle entry needed in Application.Styles for this alpha release.
+        -->
     </Application.Styles>
 
 </Application>

@@ -3,85 +3,247 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:AmberNotes.ViewModels"
+             xmlns:models="using:AmberNotes.Models"
+             xmlns:md="using:Markdown.Avalonia"
              mc:Ignorable="d"
              x:Class="AmberNotes.Views.NoteEditView"
-             x:DataType="vm:NoteEditViewModel">
+             x:DataType="vm:NoteEditViewModel"
+             Background="{DynamicResource AppSurface}">
 
-  <Design.DataContext>
-    <vm:NoteEditViewModel />
-  </Design.DataContext>
+  <!--
+    ═══════════════════════════════════════════════════════════════════════
+    NoteEditView — Markdown Editor (v0.4 / Step 18)
 
-  <Grid RowDefinitions="*,Auto" Margin="24">
+    Layout (4 rows):
+      [0] Header  — window title + Edit/Preview segmented toggle
+      [1] Meta    — Title TextBox, Book/Type/Date bar
+      [2] Content — TextBox (edit) OR MarkdownScrollViewer (preview)    *
+      [3] Footer  — Cancel / Save buttons
 
-    <!-- ── Fields ── -->
-    <ScrollViewer Grid.Row="0">
-      <StackPanel Spacing="14">
+    All colours via DynamicResource → works with AmberNoir + SaffronLinen.
+    ═══════════════════════════════════════════════════════════════════════
+  -->
+
+  <Grid RowDefinitions="Auto,Auto,*,Auto">
+
+    <!-- ═══ [0] HEADER ═══════════════════════════════════════════════════ -->
+    <Border Grid.Row="0"
+            Background="{DynamicResource AppToolbar}"
+            Padding="16,10"
+            BorderThickness="0,0,0,1"
+            BorderBrush="{DynamicResource AppBorder}">
+
+      <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+
+        <!-- Window title -->
+        <TextBlock Grid.Column="0"
+                   Text="{Binding WindowTitle}"
+                   FontSize="14" FontWeight="SemiBold"
+                   Foreground="{DynamicResource AppOnSurface}"
+                   VerticalAlignment="Center" />
+
+        <!-- ── Segmented: ✏ Редагування | 👁 Перегляд ───────────────── -->
+        <Border Grid.Column="1"
+                Background="{DynamicResource AppSurfaceVariant}"
+                CornerRadius="8"
+                Padding="3"
+                VerticalAlignment="Center"
+                ToolTip.Tip="{Binding EditorModeTip}">
+
+          <StackPanel Orientation="Horizontal" Spacing="2">
+
+            <!-- EDIT pill -->
+            <Panel>
+              <!-- Active: non-interactive amber highlight -->
+              <Border CornerRadius="5" Padding="12,5"
+                      Background="{DynamicResource AppPrimary}"
+                      IsVisible="{Binding IsEditMode}">
+                <TextBlock Text="✏ Редагування"
+                           FontSize="12" FontWeight="SemiBold"
+                           Foreground="{DynamicResource AppOnPrimary}" />
+              </Border>
+              <!-- Inactive: clickable to switch to edit -->
+              <Button Content="✏ Редагування"
+                      Command="{Binding ToggleEditorModeCommand}"
+                      Padding="12,5" CornerRadius="5" FontSize="12"
+                      IsVisible="{Binding IsPreviewMode}">
+                <Button.Styles>
+                  <Style Selector="Button">
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="Foreground" Value="{DynamicResource AppSubtext}" />
+                    <Setter Property="BorderThickness" Value="0" />
+                  </Style>
+                  <Style Selector="Button:pointerover /template/ ContentPresenter">
+                    <Setter Property="Background" Value="{DynamicResource AppSurface}" />
+                    <Setter Property="CornerRadius" Value="5" />
+                  </Style>
+                </Button.Styles>
+              </Button>
+            </Panel>
+
+            <!-- PREVIEW pill -->
+            <Panel>
+              <!-- Active: amber highlight -->
+              <Border CornerRadius="5" Padding="12,5"
+                      Background="{DynamicResource AppPrimary}"
+                      IsVisible="{Binding IsPreviewMode}">
+                <TextBlock Text="👁 Перегляд"
+                           FontSize="12" FontWeight="SemiBold"
+                           Foreground="{DynamicResource AppOnPrimary}" />
+              </Border>
+              <!-- Inactive: clickable to switch to preview -->
+              <Button Content="👁 Перегляд"
+                      Command="{Binding ToggleEditorModeCommand}"
+                      Padding="12,5" CornerRadius="5" FontSize="12"
+                      IsVisible="{Binding IsEditMode}">
+                <Button.Styles>
+                  <Style Selector="Button">
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="Foreground" Value="{DynamicResource AppSubtext}" />
+                    <Setter Property="BorderThickness" Value="0" />
+                  </Style>
+                  <Style Selector="Button:pointerover /template/ ContentPresenter">
+                    <Setter Property="Background" Value="{DynamicResource AppSurface}" />
+                    <Setter Property="CornerRadius" Value="5" />
+                  </Style>
+                </Button.Styles>
+              </Button>
+            </Panel>
+
+          </StackPanel>
+        </Border>
+
+      </Grid>
+    </Border>
+
+    <!-- ═══ [1] META (Title + Book/Type/Date) ════════════════════════════ -->
+    <Border Grid.Row="1"
+            Background="{DynamicResource AppSurface}"
+            Padding="16,12"
+            BorderThickness="0,0,0,1"
+            BorderBrush="{DynamicResource AppDivider}">
+
+      <StackPanel Spacing="8">
 
         <!-- Title -->
-        <StackPanel Spacing="4">
-          <TextBlock Text="Заголовок" FontWeight="SemiBold" />
-          <TextBox Text="{Binding Title}"
-                   PlaceholderText="Введіть заголовок…"
-                   MaxLength="200" />
-        </StackPanel>
+        <TextBox Text="{Binding Title}"
+                 PlaceholderText="Заголовок нотатки…"
+                 MaxLength="200"
+                 FontSize="15"
+                 FontWeight="SemiBold"
+                 Background="{DynamicResource AppSurfaceVariant}"
+                 Foreground="{DynamicResource AppOnSurface}"
+                 BorderThickness="0"
+                 Padding="10,7"
+                 CornerRadius="6" />
 
-        <!-- Content -->
-        <StackPanel Spacing="4">
-          <TextBlock Text="Текст нотатки" FontWeight="SemiBold" />
-          <TextBox Text="{Binding Content}"
-                   PlaceholderText="Введіть текст…"
-                   AcceptsReturn="True"
-                   TextWrapping="Wrap"
-                   MinHeight="140"
-                   MaxHeight="240" />
-        </StackPanel>
+        <!-- Book / Type / Date row -->
+        <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="8">
 
-        <!-- Book -->
-        <StackPanel Spacing="4">
-          <TextBlock Text="Книга" FontWeight="SemiBold" />
-          <ComboBox ItemsSource="{Binding Books}"
+          <!-- Book picker -->
+          <ComboBox Grid.Column="0"
+                    ItemsSource="{Binding Books}"
                     SelectedItem="{Binding SelectedBook}"
                     HorizontalAlignment="Stretch">
             <ComboBox.ItemTemplate>
-              <DataTemplate>
+              <DataTemplate x:DataType="models:Book">
                 <TextBlock Text="{Binding Name}" />
               </DataTemplate>
             </ComboBox.ItemTemplate>
           </ComboBox>
-        </StackPanel>
 
-        <!-- Type -->
-        <StackPanel Spacing="4">
-          <TextBlock Text="Тип" FontWeight="SemiBold" />
-          <ComboBox ItemsSource="{Binding NoteTypes}"
+          <!-- Note type -->
+          <ComboBox Grid.Column="1"
+                    ItemsSource="{Binding NoteTypes}"
                     SelectedItem="{Binding SelectedType}"
                     HorizontalAlignment="Stretch" />
-        </StackPanel>
 
-        <!-- Date -->
-        <StackPanel Spacing="4">
-          <TextBlock Text="Дата запису" FontWeight="SemiBold" />
-          <CalendarDatePicker SelectedDate="{Binding NoteDate}"
-                              HorizontalAlignment="Stretch" />
-        </StackPanel>
+          <!-- Note date -->
+          <CalendarDatePicker Grid.Column="2"
+                              SelectedDate="{Binding NoteDate}"
+                              VerticalAlignment="Center" />
+        </Grid>
 
       </StackPanel>
-    </ScrollViewer>
+    </Border>
 
-    <!-- ── Buttons ── -->
-    <StackPanel Grid.Row="1"
-                Orientation="Horizontal"
-                HorizontalAlignment="Right"
-                Spacing="12"
-                Margin="0,16,0,0">
-      <Button Content="Скасувати"
-              Command="{Binding CancelCommand}"
-              MinWidth="100" Padding="16,8" />
-      <Button Content="Зберегти"
-              Command="{Binding SaveCommand}"
-              Classes="accent"
-              MinWidth="100" Padding="16,8" />
-    </StackPanel>
+    <!-- ═══ [2] CONTENT AREA ════════════════════════════════════════════ -->
+    <Grid Grid.Row="2">
+
+      <!-- ── EDIT MODE: Monospace Markdown TextBox ─────────────────── -->
+      <!--
+        • Monospace font chain: Cascadia Code → Cascadia Mono → Courier New → system Monospace
+        • AcceptsReturn + TextWrapping for multi-line editing
+        • Background/Foreground from theme so dark/light work correctly
+        • Hint at the bottom via placeholder text with Markdown syntax examples
+      -->
+      <TextBox IsVisible="{Binding IsEditMode}"
+               Text="{Binding Content}"
+               PlaceholderText="# Заголовок&#x0a;&#x0a;**Жирний**, *курсив*, `код`&#x0a;&#x0a;- Пункт 1&#x0a;- Пункт 2"
+               AcceptsReturn="True"
+               TextWrapping="Wrap"
+               FontFamily="Cascadia Code,Cascadia Mono,Courier New,Monospace"
+               FontSize="13"
+               LineHeight="20"
+               Padding="16"
+               Background="{DynamicResource AppBackground}"
+               Foreground="{DynamicResource AppOnBackground}"
+               BorderThickness="0"
+               CornerRadius="0"
+               VerticalAlignment="Stretch"
+               HorizontalAlignment="Stretch"
+               ScrollViewer.VerticalScrollBarVisibility="Auto"
+               ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
+
+      <!-- ── PREVIEW MODE: Rendered Markdown ─────────────────────── -->
+      <!--
+        MarkdownScrollViewer (Markdown.Avalonia 12.0.0-a3):
+        • Natively renders Markdown via Markdig pipeline into Avalonia controls
+        • Inherits FluentTheme / RequestedThemeVariant → adapts to dark/light
+        • Wrapped in Border to add themed background + breathing room padding
+      -->
+      <Border IsVisible="{Binding IsPreviewMode}"
+              Background="{DynamicResource AppBackground}"
+              Padding="16,12">
+        <md:MarkdownScrollViewer Markdown="{Binding Content}" />
+      </Border>
+
+    </Grid>
+
+    <!-- ═══ [3] FOOTER (Cancel / Save) ═════════════════════════════════ -->
+    <Border Grid.Row="3"
+            Background="{DynamicResource AppToolbar}"
+            Padding="16,10"
+            BorderThickness="0,1,0,0"
+            BorderBrush="{DynamicResource AppBorder}">
+
+      <StackPanel Orientation="Horizontal"
+                  HorizontalAlignment="Right"
+                  Spacing="10">
+
+        <Button Content="Скасувати"
+                Command="{Binding CancelCommand}"
+                MinWidth="100" Padding="14,8" />
+
+        <Button Content="Зберегти"
+                Command="{Binding SaveCommand}"
+                Classes="accent"
+                MinWidth="100" Padding="14,8">
+          <Button.Styles>
+            <Style Selector="Button.accent">
+              <Setter Property="Background" Value="{DynamicResource AppPrimary}" />
+              <Setter Property="Foreground" Value="{DynamicResource AppOnPrimary}" />
+              <Setter Property="BorderThickness" Value="0" />
+              <Setter Property="FontWeight" Value="SemiBold" />
+            </Style>
+            <Style Selector="Button.accent:pointerover /template/ ContentPresenter">
+              <Setter Property="Opacity" Value="0.88" />
+            </Style>
+          </Button.Styles>
+        </Button>
+
+      </StackPanel>
+    </Border>
 
   </Grid>
 </UserControl>

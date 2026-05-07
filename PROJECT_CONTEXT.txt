@@ -63,13 +63,13 @@ MainWindow / AppView
 ```
 
 ## Поточний статус (Roadmap)
-**Реалізована версія:** v0.1: Skeleton & MVVM
+**Реалізована версія:** v0.1: Skeleton & MVVM ✅
 - [x] Крок 1: Створення рішення (Core, Desktop, Android).
 - [x] Крок 2: Створення PROJECT_JOURNAL.md.
 - [x] Крок 3: Впровадження .cursorrules для ШІ.
 - [x] Крок 4: Базовий UI (Головне вікно з кнопкою "Створити" і тестовим записом).
 
-**Реалізована версія:** v0.2: SQLite Local (Unencrypted)
+**Реалізована версія:** v0.2: SQLite Local (Unencrypted) ✅
 - [x] Крок 5: Підключення Microsoft.Data.Sqlite.
 - [x] Крок 6: Створення таблиці Books (Id, Name, Default [true/false]).
 - [x] Крок 7: Створення таблиці Notes (Id, Title, Content, NoteDateTime, CreatedAt, UpdatedAt, Type: Public/Private). Налаштування зв'язків між таблицями Books та Notes, як One-to-Many.
@@ -82,6 +82,14 @@ MainWindow / AppView
 - [x] Крок 12: `LoginViewModel` (CommunityToolkit.Mvvm): обробка першого запуску/розблокування, PBKDF2 у фоні (`Task.Run`), очищення пароля з пам'яті. `AppViewModel` з `CurrentViewModel` для навігації. `AppView.axaml` (мобільний root). `MainWindow.axaml` оновлено на `ContentControl`.
 - [x] Крок 13: `LoginView.axaml` — повноекранний екран авторизації у бурштинових тонах (#2B1B10 фон, #FFBF00 акцент). Поле пароля (PasswordChar), поле підтвердження (IsVisible=IsFirstRun), панель помилок, кнопка «Створити сховище»/«Розблокувати», ProgressBar під час PBKDF2.
 - [x] Крок 14: Логіка ініціалізації: перший запуск → `CryptoService.IsFirstRun=true` → показ Confirm-поля + створення сховища; наступні запуски → `IsFirstRun=false` → розблокування. Міграційний guard v0.2→v0.3. `dotnet build` **succeeded** ✅ (0 помилок, 0 попереджень).
+
+**Поточна версія:** v0.4: Writing Experience & Modes 
+- [x] **Крок 15: Themes.** Створення ResourceDictionary для "Amber Noir" та "Saffron Linen". Налаштування DynamicResource для всіх компонентів.
+- [x] **Крок 16: ModeSwitcher.** Реалізація сервісу перемикання режимів та UI-контрола в Header.
+- [x] **Крок 17: Security Bridge.** Оновлення логіки входу: запит пароля лише для Приватного режиму. Розділення потоків даних Public/Private.
+- [x] **Крок 18: Markdown Core.** Підключення Markdig + Markdown.Avalonia. Створення NoteEditorView з підтримкою Markdown-розмітки та перемикачем Edit/Preview.
+- [ ] **Крок 19: Single-Window Navigation.** Впровадження ViewLocator або Router для зміни екранів (List <-> Editor) без нових вікон.
+
 
 ## Журнал сесій (Session Log)
 ### 2026-05-03 — Ініціалізація проєкту
@@ -123,7 +131,93 @@ MainWindow / AppView
 - **Зроблено (Крок 14):** Логіка ініціалізації повністю реалізована. Перший запуск — `CryptoService.IsFirstRun=true`, сіль ще не існує → LoginView показує Confirm-поле + кнопку «Створити сховище» → PBKDF2 генерує сіль + ключ → `TryUnlockWithKey()` + `Initialize()` → `SwitchToMain()`. Наступні запуски — сіль існує → `IsFirstRun=false` → тільки поле пароля + кнопка «Розблокувати» → PBKDF2 відтворює той самий ключ → верифікація `SELECT count(*) FROM sqlite_master`. Помилковий пароль → `SqliteException` → поля очищуються. `LoginViewModel` хелпери: `HasError`, `IsNotBusy`, `ButtonText`, `SubtitleText` — через `partial void On*Changed`.
 - **Результат:** `dotnet build` — **succeeded** ✅ (0 помилок, 0 попереджень)
 - **Статус v0.3:** ЗАВЕРШЕНО ✅
-- **Наступний крок:** v0.4 — Markdown-редактор, публічний/приватний режим, світла/темна тема.
+
+### 2026-05-07 — Кроки 15-16: Themes & ModeSwitcher (v0.4 початок)
+
+- **Зроблено (Крок 15):** Глобальна система тем на базі `DynamicResource`.
+  - `AmberNotes/Styles/Themes/AmberNoir.axaml` — темна тема (#1A1A1B фон, #FFBF00 акцент). Визначає 15 семантичних ресурсів-пензлів: `AppBackground`, `AppSurface`, `AppSurfaceVariant`, `AppToolbar`, `AppOnBackground`, `AppOnSurface`, `AppSubtext`, `AppPrimary`, `AppOnPrimary`, `AppSecondary`, `AppBorder`, `AppDivider`, `AppPrivateGlow`, `AppPrivateBadge`, `AppPublicBadge`.
+  - `AmberNotes/Styles/Themes/SaffronLinen.axaml` — світла тема (#F4F1EA фон, #D97706 акцент). Ті ж самі ключі — гарантує сумісність між темами.
+  - `ThemeService.cs` (Singleton) — `SetTheme()` + `ToggleTheme()` + `Initialize()`. При перемиканні: видаляє старий `ResourceInclude` з `Application.Resources.MergedDictionaries`, додає новий, оновлює `app.RequestedThemeVariant` (Dark/Light) для FluentTheme. Працює на Desktop і Android однаково через `avares://` URIs.
+  - `App.axaml` оновлено: `RequestedThemeVariant="Dark"`, `<ResourceInclude Source="avares://AmberNotes/Styles/Themes/AmberNoir.axaml"/>` як дефолт.
+  - `App.axaml.cs` оновлено: `ThemeService.Instance.Initialize()` викликається першим у `OnFrameworkInitializationCompleted`.
+  - `AmberNotes.csproj` оновлено: `<AvaloniaResource Include="Styles\**" />`.
+  - `MainView.axaml` повністю переписано: всі кольори замінені на `DynamicResource` (AppBackground, AppToolbar, AppBorder, AppSubtext, AppSurface, AppSurfaceVariant, AppOnSurface, AppPrimary, AppOnPrimary, AppSecondary).
+
+- **Зроблено (Крок 16):** ModeSwitcher — Public/Private режим.
+  - `ModeService.cs` (Singleton) — `SetMode()`, `ToggleMode()`, подія `ModeChanged`. Стан: Public (за замовчуванням) / Private.
+  - `MainViewModel.cs` оновлено: `IsPrivateMode` + `IsPublicMode` (inverse), `IsDarkTheme`, `ThemeToggleIcon`, `ThemeToggleTip`; команди `SetPublicModeCommand`, `SetPrivateModeCommand`, `ToggleThemeCommand`; підписка на singleton-події; `LoadNotes()` фільтрує нотатки за типом (Public/Private відповідно до режиму).
+  - `MainView.axaml` Header: 3-колонковий Grid — [CRUD кнопки | Segmented Mode Switcher | Theme Toggle]. Mode Switcher: активний стан — статичний `Border` з кольором акценту, неактивний — `Button` з прозорим фоном. Theme Toggle: кнопка 🌙/☀ з тултипом.
+  - **Visual Cue (Private mode):** Напівпрозорий `Panel` з `AppPrivateGlow` `Border` (BorderThickness=3) покриває весь view (`ZIndex=500`, `IsHitTestVisible=False`) коли `IsPrivateMode=true`.
+- **Результат:** `dotnet build` — **succeeded** ✅ (0 помилок, Desktop + Android)
+- **Наступний крок:** Крок 17 — Security Bridge (password re-prompt для Private mode, відокремлена public.db).
+
+### 2026-05-07 — Крок 17: Security Bridge (v0.4 продовження) — ФІНАЛЬНА ВЕРСІЯ
+
+- **Ключова логіка запуску (виправлено):**
+  - Застосунок **завжди** стартує в Public режимі без будь-якого LoginView.
+  - Пароль **ніколи** не запитується при запуску — користувач може використовувати публічні нотатки нескінченно без пароля.
+  - LoginView з'являється **лише** коли користувач натискає "🔒 Приватний":
+    - немає `ambernotes.salt` (перший вхід у приватний) → LoginView з формою **створення** сховища.
+    - `ambernotes.salt` є → LoginView з формою **розблокування** сховища.
+    - При скасуванні → повернення до MainView в Public режимі без змін.
+
+- **Зроблено:** Розділення даних на дві незалежних бази даних:
+  - `public.db` — незашифрована plain SQLite. Містить публічні нотатки (`NoteType.Public`). Відкривається при запуску.
+  - `ambernotes.db` — SQLCipher AES-256. Містить приватні нотатки (`NoteType.Private`). Відкривається лише після введення майстер-пароля в Private режимі.
+
+- **Зроблено (DatabaseService.cs):** `UnlockAsPlain()` + `OpenConnectionPlain()`. `OpenConnection()` перевіряє `_isPlain` — без `PRAGMA key` для public.db.
+
+- **Зроблено (App.axaml.cs):** Простий лінійний старт без розгалуження:
+  1. `ThemeService.Instance.Initialize()`
+  2. `publicDbService.UnlockAsPlain()` + `Initialize()` → публічні репо.
+  3. `privateDbService` + `cryptoSvc` — тільки конфігуруються, не відкриваються.
+  4. `appVm.SwitchToMain(...)` → одразу MainView в Public режимі.
+  5. `mainVm.PrivateLoginRequested += () => appVm.ShowPrivateLogin(...)` — підписка на подію.
+
+- **Зроблено (AppViewModel.cs):** Спрощено до одного конструктора. `SwitchToMain()` тепер повертає `MainViewModel` (для підписки на події). Новий метод `ShowPrivateLogin(cryptoSvc, privateDbService, mainVm)`:
+  - Створює `LoginViewModel` з `CanCancel=true`.
+  - Підписується на `LoginSucceeded` → будує приватні репо → `mainVm.SetPrivateRepos()` → `ModeService.SetMode(Private)` → `CurrentViewModel = mainVm`.
+  - Підписується на `LoginCancelled` → `CurrentViewModel = mainVm` (без зміни режиму).
+
+- **Зроблено (LoginViewModel.cs):** Нові властивість `CanCancel` (`[ObservableProperty]`), подія `LoginCancelled`, команда `CancelCommand` — очищає поля та викликає `LoginCancelled`.
+
+- **Зроблено (LoginView.axaml):** Кнопка "Скасувати" (`IsVisible="{Binding CanCancel}"`) — прозорий стиль з бурштиновою рамкою; розташована після security hint.
+
+- **Зроблено (MainViewModel.cs):**
+  - Видалено `UnlockOverlay`/`IsUnlockOverlayVisible`/`PrivateUnlockViewModel`.
+  - Додано `event Action? PrivateLoginRequested` — стріляє в `SetPrivateModeCommand` коли приватний репо ще null.
+  - Додано `SetPrivateRepos(NoteRepository, BookRepository)` — викликається `AppViewModel` після успішного входу.
+  - `LoadNotes()` — гвард проти null при недоступному приватному репо.
+
+- **Зроблено (MainView.axaml):** Видалено `Panel (ZIndex=800)` з `ContentControl Content="{Binding UnlockOverlay}"`. `PrivateUnlockView` overlay більше не потрібен.
+
+- **Результат:** `dotnet build` — **succeeded** ✅ (0 помилок, 0 попереджень, Desktop)
+
+### 2026-05-07 — Крок 18: Markdown Core (v0.4 продовження)
+
+- **NuGet пакети:** Додано `Markdig 1.1.3` та `Markdown.Avalonia 12.0.0-a3` (pre-release, сумісний з Avalonia 12.x) до `Directory.Packages.props` та `AmberNotes.csproj`.
+
+- **Зроблено (NoteEditViewModel.cs):**
+  - Нова властивість `IsEditMode` (`[ObservableProperty]`, default `true`) — перемикач режимів.
+  - Обчислювана `IsPreviewMode` (= `!IsEditMode`) для `IsVisible` в UI.
+  - Обчислювана `EditorModeTip` — tooltip для сегментованого перемикача.
+  - Нова команда `ToggleEditorModeCommand` (`[RelayCommand]`) — інвертує `IsEditMode`.
+
+- **Зроблено (NoteEditView.axaml) — повна переробка:**
+  - **[Row 0] Header:** Назва вікна (`WindowTitle`) + Segmented-перемикач "✏ Редагування / 👁 Перегляд". Активна таблетка — бурштиновий `Border` (amber `AppPrimary`), неактивна — прозорий `Button`. DynamicResource кольори.
+  - **[Row 1] Meta-смуга:** Поле заголовку (`FontSize=15, SemiBold, AppSurfaceVariant фон, без рамки`) + рядок Книга/Тип/Дата в `Grid` 3 колонки. `DataTemplate x:DataType="models:Book"` для ComboBox.
+  - **[Row 2] Контент:**
+    - *Edit mode:* `TextBox` з моноширинним шрифтом `"Cascadia Code,Cascadia Mono,Courier New,Monospace"`, `FontSize=13`, `LineHeight=20`, `AcceptsReturn=True`, `TextWrapping=Wrap`, `AppBackground/AppOnBackground` — повністю тематизований.
+    - *Preview mode:* `md:MarkdownScrollViewer` (з namespace `using:Markdown.Avalonia`) із прив'язкою `Markdown="{Binding Content}"`, загорнутий у `Border` з `AppBackground`.
+  - **[Row 3] Footer:** Кнопки "Скасувати" + "Зберегти" (клас `accent`, локальні стилі з `AppPrimary/AppOnPrimary`).
+  - Всі кольори через `DynamicResource` — теми Amber Noir / Saffron Linen переключаються миттєво.
+
+- **Зроблено (App.axaml):** Namespace `Markdown.Avalonia` оголошено на кореневому елементі. В цій alpha-версії `MarkdownScrollViewer` реєструє стилі самостійно — явне додавання до `Application.Styles` не потрібне.
+
+- **Технічна примітка:** `Markdown.Avalonia 12.0.0-a3` — `MarkdownStyle` у цьому релізі не реалізує `Avalonia.Styling.IStyle` і не потребує явного додавання до `Application.Styles`. `MarkdownScrollViewer` рендерить Markdown через внутрішній Markdig-пайплайн, нативними Avalonia-контролами.
+
+- **Результат:** `dotnet build` — **succeeded** ✅ (0 помилок, 0 попереджень, Desktop)
+- **Наступний крок:** Крок 19 — Single-Window Navigation (List ↔ Editor без нових вікон).
 
 
 
@@ -145,6 +239,7 @@ MainWindow / AppView
   
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
+    <AvaloniaResource Include="Styles\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -156,6 +251,8 @@ MainWindow / AppView
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Markdig" />
+    <PackageReference Include="Markdown.Avalonia" />
     <PackageReference Include="Microsoft.Data.Sqlite.Core" />
   </ItemGroup>
 </Project>
@@ -168,17 +265,37 @@ MainWindow / AppView
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:AmberNotes"
              x:Class="AmberNotes.App"
-             RequestedThemeVariant="Default">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+             RequestedThemeVariant="Dark">
 
     <Application.DataTemplates>
         <local:ViewLocator/>
     </Application.DataTemplates>
 
+    <!--
+        Theme resources are loaded here as the initial default (AmberNoir).
+        ThemeService.Initialize() called in App.axaml.cs replaces this entry
+        at runtime when the user switches themes — all DynamicResource bindings
+        update instantly without any view reload.
+    -->
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://AmberNotes/Styles/Themes/AmberNoir.axaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+
     <Application.Styles>
         <FluentTheme />
+        <!--
+            Markdown.Avalonia 12.0.0-a3: MarkdownScrollViewer auto-registers its styles
+            when the MarkdownScrollViewer control is first instantiated — no explicit
+            MarkdownStyle entry needed in Application.Styles for this alpha release.
+        -->
     </Application.Styles>
+
 </Application>
+
 
 
 --- FILE: .\AmberNotes\App.axaml.cs ---
@@ -203,57 +320,73 @@ namespace AmberNotes
 
         public override void OnFrameworkInitializationCompleted()
         {
-            // ── Infrastructure ────────────────────────────────────────────────
-            var dbPath    = GetDatabasePath();
-            var dbService = new DatabaseService(dbPath);
-            var cryptoSvc = new CryptoService(Path.GetDirectoryName(dbPath)!);
+            // ── 1. Theme: ensure AmberNoir is active from the start ───────────────
+            Services.ThemeService.Instance.Initialize();
 
-            // ── App-level navigation ──────────────────────────────────────────
-            var loginVm = new LoginViewModel(cryptoSvc, dbService);
-            var appVm   = new AppViewModel(loginVm);
+            // ── 2. Public database (always available, no password required) ───────
+            var publicDbPath    = GetPublicDatabasePath();
+            var publicDbService = new DatabaseService(publicDbPath);
+            publicDbService.UnlockAsPlain();
+            publicDbService.Initialize();      // creates tables + seed book if needed
 
-            // After successful login: build repositories and switch to main view
-            loginVm.LoginSucceeded += () =>
-            {
-                var noteRepo = new NoteRepository(dbService);
-                var bookRepo = new BookRepository(dbService);
-                appVm.SwitchToMain(noteRepo, bookRepo);
-            };
-            // ─────────────────────────────────────────────────────────────────
+            var publicNoteRepo = new NoteRepository(publicDbService);
+            var publicBookRepo = new BookRepository(publicDbService);
 
-            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-            {
-                // Desktop: AppViewModel drives MainWindow via ContentControl + ViewLocator
-                desktop.MainWindow = new MainWindow
-                {
-                    DataContext = appVm
-                };
-            }
-            else if (ApplicationLifetime is IActivityApplicationLifetime activityLifetime)
-            {
-                // Android: AppView is the mobile root (mirrors MainWindow structure)
-                activityLifetime.MainViewFactory = () => new AppView
-                {
-                    DataContext = appVm
-                };
-            }
-            else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
-            {
-                singleViewPlatform.MainView = new AppView
-                {
-                    DataContext = appVm
-                };
-            }
+            // ── 3. Private database (encrypted; stays locked until user unlocks) ──
+            var privateDbPath    = GetPrivateDatabasePath();
+            var cryptoSvc        = new CryptoService(Path.GetDirectoryName(privateDbPath)!);
+            var privateDbService = new DatabaseService(privateDbPath);
+
+            // ── 4. Always start in Public mode — no Login screen at startup ───────
+            var appVm  = new AppViewModel();
+            var mainVm = appVm.SwitchToMain(publicNoteRepo, publicBookRepo,
+                                            privateDbService, cryptoSvc);
+
+            // ── 5. Wire up Private login flow ─────────────────────────────────────
+            //   When user taps "🔒 Приватний", MainViewModel fires PrivateLoginRequested.
+            //   AppViewModel shows LoginView full-screen; on success/cancel returns to MainView.
+            mainVm.PrivateLoginRequested += () =>
+                appVm.ShowPrivateLogin(cryptoSvc, privateDbService, mainVm);
+
+            // ── 6. Wire up platform lifetime ─────────────────────────────────────
+            SetupLifetime(appVm);
 
             base.OnFrameworkInitializationCompleted();
         }
 
+        private void SetupLifetime(AppViewModel appVm)
+        {
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+                desktop.MainWindow = new MainWindow { DataContext = appVm };
+            else if (ApplicationLifetime is IActivityApplicationLifetime activity)
+                activity.MainViewFactory = () => new AppView { DataContext = appVm };
+            else if (ApplicationLifetime is ISingleViewApplicationLifetime single)
+                single.MainView = new AppView { DataContext = appVm };
+        }
+
+        // ── Database path helpers ─────────────────────────────────────────────────
+
         /// <summary>
-        /// Returns the platform-appropriate path for the SQLite database file.
-        ///   Desktop  → %LOCALAPPDATA%\AmberNotes\ambernotes.db
-        ///   Android  → /data/data/{package}/files/ambernotes.db  (Personal folder)
+        /// Path for the unencrypted public database.
+        ///   Desktop  → %LOCALAPPDATA%\AmberNotes\public.db
+        ///   Android  → /data/data/{pkg}/files/public.db
         /// </summary>
-        private static string GetDatabasePath()
+        private static string GetPublicDatabasePath()
+        {
+            var folder = Environment.GetFolderPath(
+                OperatingSystem.IsAndroid()
+                    ? Environment.SpecialFolder.Personal
+                    : Environment.SpecialFolder.LocalApplicationData);
+
+            return Path.Combine(folder, "AmberNotes", "public.db");
+        }
+
+        /// <summary>
+        /// Path for the SQLCipher-encrypted private database.
+        ///   Desktop  → %LOCALAPPDATA%\AmberNotes\ambernotes.db
+        ///   Android  → /data/data/{pkg}/files/ambernotes.db
+        /// </summary>
+        private static string GetPrivateDatabasePath()
         {
             var folder = Environment.GetFolderPath(
                 OperatingSystem.IsAndroid()
@@ -557,6 +690,9 @@ public class DatabaseService
     // 64-char lowercase hex — never logged, cleared on unlock failure
     private string? _hexKey;
 
+    // True when this service manages an un-encrypted (public) database
+    private bool _isPlain;
+
     public DatabaseService(string dbPath)
     {
         _dbPath = dbPath;
@@ -564,6 +700,15 @@ public class DatabaseService
 
     /// <summary>True when the database file does not yet exist (first run).</summary>
     public bool IsNewDatabase => !File.Exists(_dbPath);
+
+    /// <summary>
+    /// Marks this service as an unencrypted (plain SQLite) database — used for public.db.
+    /// After calling this, OpenConnection() and Initialize() work without any PRAGMA key.
+    /// </summary>
+    public void UnlockAsPlain()
+    {
+        _isPlain = true;
+    }
 
     /// <summary>
     /// Attempts to open the database with the provided 256-bit hex key.
@@ -600,15 +745,18 @@ public class DatabaseService
     }
 
     /// <summary>
-    /// Opens a new authenticated connection.
+    /// Opens a new authenticated connection (encrypted or plain depending on how the service was unlocked).
     /// The caller is responsible for disposing it.
-    /// Throws <see cref="InvalidOperationException"/> if TryUnlockWithKey() was not called first.
+    /// Throws <see cref="InvalidOperationException"/> if neither UnlockAsPlain() nor TryUnlockWithKey() was called.
     /// </summary>
     public SqliteConnection OpenConnection()
     {
+        if (_isPlain)
+            return OpenConnectionPlain();
+
         if (_hexKey is null)
             throw new InvalidOperationException(
-                "Database key not set. Call TryUnlockWithKey() before opening connections.");
+                "Database not unlocked. Call UnlockAsPlain() or TryUnlockWithKey() first.");
 
         return OpenConnectionInternal(_hexKey);
     }
@@ -647,6 +795,29 @@ public class DatabaseService
     }
 
     // ── Internal helpers ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Opens a plain (unencrypted) SQLite connection — used for public.db.
+    /// No PRAGMA key is applied; this works with the SQLitePCLRaw.bundle_e_sqlcipher
+    /// provider because SQLCipher is backward-compatible with plain SQLite files.
+    /// If the database file or directory does not exist yet, they are created.
+    /// </summary>
+    private SqliteConnection OpenConnectionPlain()
+    {
+        var dir = Path.GetDirectoryName(_dbPath);
+        if (!string.IsNullOrEmpty(dir))
+            Directory.CreateDirectory(dir);
+
+        var connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = _dbPath,
+            Mode       = SqliteOpenMode.ReadWriteCreate,
+        }.ToString();
+
+        var connection = new SqliteConnection(connectionString);
+        connection.Open();
+        return connection;
+    }
 
     /// <summary>
     /// Opens a connection and immediately applies the SQLCipher key as raw hex bytes.
@@ -728,6 +899,62 @@ public class DatabaseService
         insertCmd.CommandText  = "INSERT INTO Books (Name, IsDefault) VALUES ('My Notes', 1);";
         insertCmd.ExecuteNonQuery();
     }
+}
+
+
+
+--- FILE: .\AmberNotes\Services\ModeService.cs ---
+
+using System;
+
+namespace AmberNotes.Services;
+
+/// <summary>
+/// Application working mode.
+/// </summary>
+public enum AppMode
+{
+    /// <summary>Public mode — shows un-encrypted (or public-typed) notes.</summary>
+    Public,
+    /// <summary>Private mode — requires authentication; shows private notes only.</summary>
+    Private
+}
+
+/// <summary>
+/// Singleton service that tracks the current Public / Private mode.
+/// Raises ModeChanged when the mode is switched so that any subscriber
+/// (ViewModels, views) can react without tight coupling.
+///
+/// Security Bridge (Step 17) will add password re-prompting here;
+/// for now the switch is unconditional.
+/// </summary>
+public sealed class ModeService
+{
+    // ── Singleton ────────────────────────────────────────────────────────────
+    public static readonly ModeService Instance = new();
+    private ModeService() { }
+
+    // ── State ─────────────────────────────────────────────────────────────────
+    private AppMode _currentMode = AppMode.Public;
+
+    public AppMode CurrentMode => _currentMode;
+    public bool IsPrivate => _currentMode == AppMode.Private;
+    public bool IsPublic  => _currentMode == AppMode.Public;
+
+    // ── Events ────────────────────────────────────────────────────────────────
+    public event Action<AppMode>? ModeChanged;
+
+    // ── Public API ────────────────────────────────────────────────────────────
+
+    public void SetMode(AppMode mode)
+    {
+        if (_currentMode == mode) return;
+        _currentMode = mode;
+        ModeChanged?.Invoke(mode);
+    }
+
+    public void ToggleMode() =>
+        SetMode(_currentMode == AppMode.Public ? AppMode.Private : AppMode.Public);
 }
 
 
@@ -881,6 +1108,238 @@ public class NoteRepository
 
 
 
+--- FILE: .\AmberNotes\Services\ThemeService.cs ---
+
+using System;
+using System.Linq;
+using Avalonia;
+using Avalonia.Markup.Xaml.Styling;
+using Avalonia.Styling;
+
+namespace AmberNotes.Services;
+
+/// <summary>
+/// Available visual themes.
+/// </summary>
+public enum AppTheme
+{
+    /// <summary>Warm dark theme — deep darks + amber accent (#FFBF00).</summary>
+    AmberNoir,
+    /// <summary>Warm light theme — parchment + saffron accent (#D97706).</summary>
+    SaffronLinen
+}
+
+/// <summary>
+/// Singleton service that switches global visual themes at runtime via
+/// Avalonia's DynamicResource / ResourceDictionary.MergedDictionaries.
+/// Works identically on Desktop and Android (avares:// URIs are cross-platform).
+/// </summary>
+public sealed class ThemeService
+{
+    // ── Singleton ────────────────────────────────────────────────────────────
+    public static readonly ThemeService Instance = new();
+    private ThemeService() { }
+
+    // ── State ─────────────────────────────────────────────────────────────────
+    private AppTheme _currentTheme = AppTheme.AmberNoir;
+
+    public AppTheme CurrentTheme => _currentTheme;
+    public bool IsDark => _currentTheme == AppTheme.AmberNoir;
+
+    // ── Events ────────────────────────────────────────────────────────────────
+    public event Action<AppTheme>? ThemeChanged;
+
+    // ── Public API ────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Applies the default theme (AmberNoir) on first launch.
+    /// Call once from App.OnFrameworkInitializationCompleted AFTER
+    /// AvaloniaXamlLoader.Load(this) so Application.Resources is ready.
+    /// </summary>
+    public void Initialize() => ApplyTheme(_currentTheme);
+
+    /// <summary>Switches to the given theme immediately.</summary>
+    public void SetTheme(AppTheme theme)
+    {
+        if (_currentTheme == theme) return;
+        _currentTheme = theme;
+        ApplyTheme(theme);
+        ThemeChanged?.Invoke(theme);
+    }
+
+    /// <summary>Toggles between AmberNoir ↔ SaffronLinen.</summary>
+    public void ToggleTheme() =>
+        SetTheme(_currentTheme == AppTheme.AmberNoir ? AppTheme.SaffronLinen : AppTheme.AmberNoir);
+
+    // ── Core ──────────────────────────────────────────────────────────────────
+
+    private static void ApplyTheme(AppTheme theme)
+    {
+        var app = Application.Current
+            ?? throw new InvalidOperationException("Application.Current is null — call Initialize() after Avalonia starts.");
+
+        var uri = theme == AppTheme.AmberNoir
+            ? new Uri("avares://AmberNotes/Styles/Themes/AmberNoir.axaml")
+            : new Uri("avares://AmberNotes/Styles/Themes/SaffronLinen.axaml");
+
+        var merged = app.Resources.MergedDictionaries;
+
+        // Remove every ResourceInclude that belongs to our theme folder
+        var stale = merged
+            .OfType<ResourceInclude>()
+            .Where(r => r.Source?.ToString().Contains("/Styles/Themes/") == true)
+            .ToList();
+
+        foreach (var d in stale)
+            merged.Remove(d);
+
+        // Load and register the new theme dictionary
+        var baseUri = new Uri("avares://AmberNotes/");
+        merged.Add(new ResourceInclude(baseUri) { Source = uri });
+
+        // Keep the Fluent base variant in sync so built-in controls look right
+        app.RequestedThemeVariant = theme == AppTheme.AmberNoir
+            ? ThemeVariant.Dark
+            : ThemeVariant.Light;
+    }
+}
+
+
+
+--- FILE: .\AmberNotes\Styles\Themes\AmberNoir.axaml ---
+
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        ══════════════════════════════════════════════════════════
+        Amber Noir — Warm Dark Theme (v0.4)
+        Background : Deep dark  #1A1A1B
+        Accent     : Amber      #FFBF00
+        ══════════════════════════════════════════════════════════
+    -->
+
+    <!-- ── Background Layers ─────────────────────────────────── -->
+    <Color x:Key="AppBackgroundColor">#1A1A1B</Color>
+    <Color x:Key="AppSurfaceColor">#242022</Color>
+    <Color x:Key="AppSurfaceVariantColor">#2E2828</Color>
+    <Color x:Key="AppToolbarColor">#1F1C1C</Color>
+
+    <!-- ── Text ──────────────────────────────────────────────── -->
+    <Color x:Key="AppOnBackgroundColor">#F0E6D3</Color>
+    <Color x:Key="AppOnSurfaceColor">#E8DDD0</Color>
+    <Color x:Key="AppSubtextColor">#9A8870</Color>
+
+    <!-- ── Accent (Amber) ────────────────────────────────────── -->
+    <Color x:Key="AppPrimaryColor">#FFBF00</Color>
+    <Color x:Key="AppOnPrimaryColor">#1A1000</Color>
+    <Color x:Key="AppSecondaryColor">#C49030</Color>
+
+    <!-- ── Borders / Dividers ────────────────────────────────── -->
+    <Color x:Key="AppBorderColor">#3D3530</Color>
+    <Color x:Key="AppDividerColor">#2E2920</Color>
+
+    <!-- ── Private-mode glow overlay ────────────────────────── -->
+    <Color x:Key="AppPrivateGlowColor">#80FFBF00</Color>
+
+    <!-- ── Badges ────────────────────────────────────────────── -->
+    <Color x:Key="AppPrivateBadgeColor">#7A3A0A</Color>
+    <Color x:Key="AppPublicBadgeColor">#1A362A</Color>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- Brushes (DynamicResource-ready)                         -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <SolidColorBrush x:Key="AppBackground"     Color="{StaticResource AppBackgroundColor}" />
+    <SolidColorBrush x:Key="AppSurface"        Color="{StaticResource AppSurfaceColor}" />
+    <SolidColorBrush x:Key="AppSurfaceVariant" Color="{StaticResource AppSurfaceVariantColor}" />
+    <SolidColorBrush x:Key="AppToolbar"        Color="{StaticResource AppToolbarColor}" />
+    <SolidColorBrush x:Key="AppOnBackground"   Color="{StaticResource AppOnBackgroundColor}" />
+    <SolidColorBrush x:Key="AppOnSurface"      Color="{StaticResource AppOnSurfaceColor}" />
+    <SolidColorBrush x:Key="AppSubtext"        Color="{StaticResource AppSubtextColor}" />
+    <SolidColorBrush x:Key="AppPrimary"        Color="{StaticResource AppPrimaryColor}" />
+    <SolidColorBrush x:Key="AppOnPrimary"      Color="{StaticResource AppOnPrimaryColor}" />
+    <SolidColorBrush x:Key="AppSecondary"      Color="{StaticResource AppSecondaryColor}" />
+    <SolidColorBrush x:Key="AppBorder"         Color="{StaticResource AppBorderColor}" />
+    <SolidColorBrush x:Key="AppDivider"        Color="{StaticResource AppDividerColor}" />
+    <SolidColorBrush x:Key="AppPrivateGlow"    Color="{StaticResource AppPrivateGlowColor}" />
+    <SolidColorBrush x:Key="AppPrivateBadge"   Color="{StaticResource AppPrivateBadgeColor}" />
+    <SolidColorBrush x:Key="AppPublicBadge"    Color="{StaticResource AppPublicBadgeColor}" />
+
+    <!-- Marker key used by ThemeService to identify our dictionaries -->
+    <x:String x:Key="AppThemeKey">AmberNoir</x:String>
+
+</ResourceDictionary>
+
+
+
+--- FILE: .\AmberNotes\Styles\Themes\SaffronLinen.axaml ---
+
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        ══════════════════════════════════════════════════════════
+        Saffron Linen — Warm Light Theme (v0.4)
+        Background : Warm parchment  #F4F1EA
+        Accent     : Saffron         #D97706
+        ══════════════════════════════════════════════════════════
+    -->
+
+    <!-- ── Background Layers ─────────────────────────────────── -->
+    <Color x:Key="AppBackgroundColor">#F4F1EA</Color>
+    <Color x:Key="AppSurfaceColor">#FDFAF4</Color>
+    <Color x:Key="AppSurfaceVariantColor">#EDE8DE</Color>
+    <Color x:Key="AppToolbarColor">#EDE8DE</Color>
+
+    <!-- ── Text ──────────────────────────────────────────────── -->
+    <Color x:Key="AppOnBackgroundColor">#2A2010</Color>
+    <Color x:Key="AppOnSurfaceColor">#3A2E18</Color>
+    <Color x:Key="AppSubtextColor">#6B5C3E</Color>
+
+    <!-- ── Accent (Saffron) ──────────────────────────────────── -->
+    <Color x:Key="AppPrimaryColor">#D97706</Color>
+    <Color x:Key="AppOnPrimaryColor">#FFFFFF</Color>
+    <Color x:Key="AppSecondaryColor">#A85D00</Color>
+
+    <!-- ── Borders / Dividers ────────────────────────────────── -->
+    <Color x:Key="AppBorderColor">#D8CDB8</Color>
+    <Color x:Key="AppDividerColor">#E0D8CC</Color>
+
+    <!-- ── Private-mode glow overlay ────────────────────────── -->
+    <Color x:Key="AppPrivateGlowColor">#80D97706</Color>
+
+    <!-- ── Badges ────────────────────────────────────────────── -->
+    <Color x:Key="AppPrivateBadgeColor">#FDE68A</Color>
+    <Color x:Key="AppPublicBadgeColor">#BBF7D0</Color>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- Brushes (DynamicResource-ready)                         -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <SolidColorBrush x:Key="AppBackground"     Color="{StaticResource AppBackgroundColor}" />
+    <SolidColorBrush x:Key="AppSurface"        Color="{StaticResource AppSurfaceColor}" />
+    <SolidColorBrush x:Key="AppSurfaceVariant" Color="{StaticResource AppSurfaceVariantColor}" />
+    <SolidColorBrush x:Key="AppToolbar"        Color="{StaticResource AppToolbarColor}" />
+    <SolidColorBrush x:Key="AppOnBackground"   Color="{StaticResource AppOnBackgroundColor}" />
+    <SolidColorBrush x:Key="AppOnSurface"      Color="{StaticResource AppOnSurfaceColor}" />
+    <SolidColorBrush x:Key="AppSubtext"        Color="{StaticResource AppSubtextColor}" />
+    <SolidColorBrush x:Key="AppPrimary"        Color="{StaticResource AppPrimaryColor}" />
+    <SolidColorBrush x:Key="AppOnPrimary"      Color="{StaticResource AppOnPrimaryColor}" />
+    <SolidColorBrush x:Key="AppSecondary"      Color="{StaticResource AppSecondaryColor}" />
+    <SolidColorBrush x:Key="AppBorder"         Color="{StaticResource AppBorderColor}" />
+    <SolidColorBrush x:Key="AppDivider"        Color="{StaticResource AppDividerColor}" />
+    <SolidColorBrush x:Key="AppPrivateGlow"    Color="{StaticResource AppPrivateGlowColor}" />
+    <SolidColorBrush x:Key="AppPrivateBadge"   Color="{StaticResource AppPrivateBadgeColor}" />
+    <SolidColorBrush x:Key="AppPublicBadge"    Color="{StaticResource AppPublicBadgeColor}" />
+
+    <!-- Marker key used by ThemeService to identify our dictionaries -->
+    <x:String x:Key="AppThemeKey">SaffronLinen</x:String>
+
+</ResourceDictionary>
+
+
+
 --- FILE: .\AmberNotes\ViewModels\AppViewModel.cs ---
 
 using AmberNotes.Services;
@@ -891,29 +1350,73 @@ namespace AmberNotes.ViewModels;
 /// <summary>
 /// Top-level application ViewModel that owns the root navigation state.
 ///
-/// On startup, CurrentViewModel = LoginViewModel (App Lock screen).
-/// After successful authentication, SwitchToMain() replaces it with MainViewModel.
+/// App always starts in Public mode (no LoginView at startup).
+/// LoginView is shown full-screen ONLY when the user explicitly taps "🔒 Приватний".
 ///
-/// MainWindow.axaml binds its ContentControl.Content to CurrentViewModel;
-/// Avalonia's ViewLocator (Application.DataTemplates) maps the VM to the correct View.
+/// MainWindow / AppView binds its ContentControl.Content to CurrentViewModel;
+/// Avalonia's ViewLocator (Application.DataTemplates) resolves VM → View automatically.
 /// </summary>
 public partial class AppViewModel : ViewModelBase
 {
     [ObservableProperty]
-    private ViewModelBase _currentViewModel;
+    private ViewModelBase _currentViewModel = null!;
 
-    public AppViewModel(LoginViewModel loginViewModel)
+    // ── Navigation ────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Replaces the current screen with the main notes dashboard.
+    /// Returns the created MainViewModel so App.axaml.cs can subscribe to its events.
+    /// </summary>
+    public MainViewModel SwitchToMain(
+        NoteRepository  publicNoteRepo,
+        BookRepository  publicBookRepo,
+        DatabaseService privateDbService,
+        CryptoService   cryptoSvc)
     {
-        _currentViewModel = loginViewModel;
+        var mainVm = new MainViewModel(
+            publicNoteRepo, publicBookRepo,
+            privateDbService, cryptoSvc);
+
+        CurrentViewModel = mainVm;
+        return mainVm;
     }
 
     /// <summary>
-    /// Called by App.axaml.cs after LoginViewModel.LoginSucceeded fires.
-    /// Replaces the lock screen with the main notes dashboard.
+    /// Shows the LoginView full-screen to unlock/create the private vault.
+    /// On success  → sets private repos on mainVm, switches to Private mode, restores mainVm.
+    /// On cancel   → restores mainVm (stays in Public mode, no mode change).
     /// </summary>
-    public void SwitchToMain(NoteRepository noteRepo, BookRepository bookRepo)
+    public void ShowPrivateLogin(
+        CryptoService   cryptoSvc,
+        DatabaseService privateDbService,
+        MainViewModel   mainVm)
     {
-        CurrentViewModel = new MainViewModel(noteRepo, bookRepo);
+        var loginVm = new LoginViewModel(cryptoSvc, privateDbService)
+        {
+            CanCancel = true
+        };
+
+        loginVm.LoginSucceeded += () =>
+        {
+            // Build private repositories now that the vault is open
+            var privateNoteRepo = new NoteRepository(privateDbService);
+            var privateBookRepo = new BookRepository(privateDbService);
+
+            // Give repos to MainViewModel and activate Private mode
+            mainVm.SetPrivateRepos(privateNoteRepo, privateBookRepo);
+            ModeService.Instance.SetMode(AppMode.Private);
+
+            // Return to the main dashboard
+            CurrentViewModel = mainVm;
+        };
+
+        loginVm.LoginCancelled += () =>
+        {
+            // User cancelled — just go back, stay in Public mode
+            CurrentViewModel = mainVm;
+        };
+
+        CurrentViewModel = loginVm;
     }
 }
 
@@ -986,13 +1489,28 @@ public partial class LoginViewModel : ViewModelBase
     partial void OnErrorMessageChanged(string? value) => OnPropertyChanged(nameof(HasError));
     partial void OnIsBusyChanged(bool value)           => OnPropertyChanged(nameof(IsNotBusy));
 
+    // ── Cancel support ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// When true the "Скасувати" button is shown.
+    /// Set by the caller (AppViewModel) before displaying this VM.
+    /// </summary>
+    [ObservableProperty]
+    private bool _canCancel;
+
     // ── Events ────────────────────────────────────────────────────────────────
 
     /// <summary>
     /// Raised when authentication succeeds and the vault is open.
-    /// Listeners (App.axaml.cs) should build repositories and switch to MainViewModel.
+    /// Listeners (AppViewModel) should set private repos and switch back to MainViewModel.
     /// </summary>
     public event Action? LoginSucceeded;
+
+    /// <summary>
+    /// Raised when the user cancels the login screen (only possible when CanCancel=true).
+    /// Listeners (AppViewModel) should restore MainViewModel without changing mode.
+    /// </summary>
+    public event Action? LoginCancelled;
 
     // ── Constructor ───────────────────────────────────────────────────────────
 
@@ -1001,11 +1519,20 @@ public partial class LoginViewModel : ViewModelBase
         _cryptoService   = cryptoService;
         _databaseService = databaseService;
 
-        // Snapshot at startup: salt file existence determines which UI mode to show
+        // Snapshot at construction time: salt file existence determines which UI mode to show
         _isFirstRun = cryptoService.IsFirstRun;
     }
 
     // ── Commands ──────────────────────────────────────────────────────────────
+
+    [RelayCommand]
+    private void Cancel()
+    {
+        Password        = string.Empty;
+        ConfirmPassword = string.Empty;
+        ErrorMessage    = null;
+        LoginCancelled?.Invoke();
+    }
 
     [RelayCommand]
     private async Task SubmitAsync()
@@ -1080,12 +1607,33 @@ namespace AmberNotes.ViewModels;
 
 public partial class MainViewModel : ViewModelBase
 {
-    // Exposed for use in MainView.axaml.cs (dialog creation)
-    public NoteRepository NoteRepo { get; }
-    public BookRepository BookRepo { get; }
+    // ── Repositories ──────────────────────────────────────────────────────────
+    //   • Public repos are always available (unencrypted public.db).
+    //   • Private repos are null until the user enters the master password.
+
+    private readonly NoteRepository _publicNoteRepo;
+    private readonly BookRepository _publicBookRepo;
+
+    private NoteRepository? _privateNoteRepo;
+    private BookRepository? _privateBookRepo;
+
+    // Services held for lazy unlock of private vault
+    private readonly DatabaseService _privateDbService;
+    private readonly CryptoService   _cryptoSvc;
+
+    /// <summary>Returns the note repository for the currently active mode.</summary>
+    public NoteRepository NoteRepo =>
+        ModeService.Instance.IsPrivate && _privateNoteRepo is not null
+            ? _privateNoteRepo
+            : _publicNoteRepo;
+
+    /// <summary>Returns the book repository for the currently active mode.</summary>
+    public BookRepository BookRepo =>
+        ModeService.Instance.IsPrivate && _privateBookRepo is not null
+            ? _privateBookRepo
+            : _publicBookRepo;
 
     // ── Notes list ────────────────────────────────────────────────────────────
-
     public ObservableCollection<Note> Notes { get; } = [];
 
     [ObservableProperty]
@@ -1093,25 +1641,65 @@ public partial class MainViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(DeleteNoteCommand))]
     private Note? _selectedNote;
 
-    // ── Events (for View to open dialogs) ─────────────────────────────────────
+    // ── Mode state ────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Raised when the user wants to create or edit a note.
-    /// The View subscribes and opens NoteEditView as a dialog.
-    /// int? = noteId (null = new note).
-    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPublicMode))]
+    private bool _isPrivateMode;
+
+    public bool IsPublicMode => !IsPrivateMode;
+
+    // ── Theme state ───────────────────────────────────────────────────────────
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ThemeToggleIcon))]
+    [NotifyPropertyChangedFor(nameof(ThemeToggleTip))]
+    private bool _isDarkTheme;
+
+    public string ThemeToggleIcon => IsDarkTheme ? "☀" : "🌙";
+    public string ThemeToggleTip  =>
+        IsDarkTheme ? "Перемкнути на світлу тему (Saffron Linen)"
+                    : "Перемкнути на темну тему (Amber Noir)";
+
+    // ── Events ────────────────────────────────────────────────────────────────
+
+    /// <summary>Fired when user taps "🔒 Приватний" and vault is not yet unlocked.</summary>
+    public event System.Action? PrivateLoginRequested;
+
     public event System.Action<int?>? OpenNoteEditRequested;
 
     // ── Constructor ───────────────────────────────────────────────────────────
 
-    public MainViewModel(NoteRepository noteRepo, BookRepository bookRepo)
+    public MainViewModel(
+        NoteRepository  publicNoteRepo,
+        BookRepository  publicBookRepo,
+        DatabaseService privateDbService,
+        CryptoService   cryptoSvc)
     {
-        NoteRepo = noteRepo;
-        BookRepo = bookRepo;
+        _publicNoteRepo   = publicNoteRepo;
+        _publicBookRepo   = publicBookRepo;
+        _privateDbService = privateDbService;
+        _cryptoSvc        = cryptoSvc;
+
+        // Sync initial state from singletons
+        _isPrivateMode = ModeService.Instance.IsPrivate;
+        _isDarkTheme   = ThemeService.Instance.IsDark;
+
+        // React to mode changes
+        ModeService.Instance.ModeChanged += mode =>
+        {
+            IsPrivateMode = mode == AppMode.Private;
+            LoadNotes();
+        };
+
+        // React to theme changes
+        ThemeService.Instance.ThemeChanged += theme =>
+            IsDarkTheme = theme == AppTheme.AmberNoir;
+
         LoadNotes();
     }
 
-    // ── Commands ──────────────────────────────────────────────────────────────
+    // ── CRUD Commands ─────────────────────────────────────────────────────────
 
     [RelayCommand]
     private void CreateNote() => OpenNoteEditRequested?.Invoke(null);
@@ -1128,9 +1716,47 @@ public partial class MainViewModel : ViewModelBase
         SelectedNote = null;
     }
 
-    // ── Public API (called by View after dialog closes) ───────────────────────
+    // ── Mode Commands ─────────────────────────────────────────────────────────
 
-    /// <summary>Reloads the notes list from the database.</summary>
+    [RelayCommand]
+    private void SetPublicMode() => ModeService.Instance.SetMode(AppMode.Public);
+
+    /// <summary>
+    /// Switches to Private mode.
+    /// • If the private vault was already unlocked this session → switch immediately.
+    /// • Otherwise → fires PrivateLoginRequested; App.axaml.cs will show LoginView.
+    /// </summary>
+    [RelayCommand]
+    private void SetPrivateMode()
+    {
+        if (_privateNoteRepo is not null)
+        {
+            // Already unlocked this session — just switch
+            ModeService.Instance.SetMode(AppMode.Private);
+            return;
+        }
+
+        // Delegate to App-level navigation (AppViewModel will show LoginView full-screen)
+        PrivateLoginRequested?.Invoke();
+    }
+
+    // ── Theme Command ─────────────────────────────────────────────────────────
+
+    [RelayCommand]
+    private void ToggleTheme() => ThemeService.Instance.ToggleTheme();
+
+    // ── Public API ────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Called by AppViewModel after successful private vault unlock.
+    /// Stores the unlocked repos so SetPrivateMode can use them immediately.
+    /// </summary>
+    public void SetPrivateRepos(NoteRepository noteRepo, BookRepository bookRepo)
+    {
+        _privateNoteRepo = noteRepo;
+        _privateBookRepo = bookRepo;
+    }
+
     public void RefreshNotes() => LoadNotes();
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -1140,8 +1766,18 @@ public partial class MainViewModel : ViewModelBase
     private void LoadNotes()
     {
         Notes.Clear();
-        foreach (var note in NoteRepo.GetAll())
-            Notes.Add(note);
+
+        // Guard: private repo might not be available yet (not yet unlocked)
+        var repo = ModeService.Instance.IsPrivate ? _privateNoteRepo : _publicNoteRepo;
+        if (repo is null) return;
+
+        var targetType = ModeService.Instance.IsPrivate ? NoteType.Private : NoteType.Public;
+
+        foreach (var note in repo.GetAll())
+        {
+            if (note.Type == targetType)
+                Notes.Add(note);
+        }
     }
 }
 
@@ -1186,6 +1822,20 @@ public partial class NoteEditViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _windowTitle = "Нова нотатка";
+
+    // ── Editor Mode (Edit / Preview) ─────────────────────────────────────────
+
+    /// <summary>True = raw Markdown editor visible; False = rendered preview visible.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPreviewMode))]
+    [NotifyPropertyChangedFor(nameof(EditorModeTip))]
+    private bool _isEditMode = true;
+
+    public bool IsPreviewMode => !IsEditMode;
+
+    public string EditorModeTip => IsEditMode
+        ? "Переключитись на перегляд Markdown"
+        : "Переключитись на редагування";
 
     // ── Collections ───────────────────────────────────────────────────────────
 
@@ -1259,6 +1909,10 @@ public partial class NoteEditViewModel : ViewModelBase
         Saved?.Invoke(note);
     }
 
+    /// <summary>Switches between raw Markdown editor and rendered preview.</summary>
+    [RelayCommand]
+    private void ToggleEditorMode() => IsEditMode = !IsEditMode;
+
     [RelayCommand]
     private void Cancel() => Cancelled?.Invoke();
 
@@ -1270,6 +1924,118 @@ public partial class NoteEditViewModel : ViewModelBase
             if (b.Id == id) return b;
         return null;
     }
+}
+
+
+
+--- FILE: .\AmberNotes\ViewModels\PrivateUnlockViewModel.cs ---
+
+using System;
+using System.Threading.Tasks;
+using AmberNotes.Services;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+
+namespace AmberNotes.ViewModels;
+
+/// <summary>
+/// Drives the in-window "unlock private vault" overlay (Step 17 — Security Bridge).
+///
+/// Shown when the user switches to Private mode but the private database has not yet
+/// been opened in this session.  Accepts the master password, runs PBKDF2 off the UI
+/// thread, and on success opens the private SQLCipher DB and raises UnlockSucceeded.
+///
+/// The plaintext password is wiped from memory in the finally block.
+/// </summary>
+public partial class PrivateUnlockViewModel : ViewModelBase
+{
+    private readonly DatabaseService _privateDbService;
+    private readonly CryptoService   _cryptoSvc;
+
+    // ── Observable state ──────────────────────────────────────────────────────
+
+    [ObservableProperty]
+    private string  _password     = string.Empty;
+
+    [ObservableProperty]
+    private string? _errorMessage;
+
+    [ObservableProperty]
+    private bool    _isBusy;
+
+    // ── Computed helpers ──────────────────────────────────────────────────────
+
+    public bool HasError  => !string.IsNullOrEmpty(ErrorMessage);
+    public bool IsNotBusy => !IsBusy;
+
+    partial void OnErrorMessageChanged(string? value) => OnPropertyChanged(nameof(HasError));
+    partial void OnIsBusyChanged(bool value)           => OnPropertyChanged(nameof(IsNotBusy));
+
+    // ── Events ────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Raised when the user enters the correct password and the private vault is open.
+    /// Subscribers (MainViewModel) should store the provided repos and switch mode.
+    /// </summary>
+    public event Action<NoteRepository, BookRepository>? UnlockSucceeded;
+
+    /// <summary>Raised when the user presses Cancel — close the overlay without switching mode.</summary>
+    public event Action? Cancelled;
+
+    // ── Constructor ───────────────────────────────────────────────────────────
+
+    public PrivateUnlockViewModel(DatabaseService privateDbService, CryptoService cryptoSvc)
+    {
+        _privateDbService = privateDbService;
+        _cryptoSvc        = cryptoSvc;
+    }
+
+    // ── Commands ──────────────────────────────────────────────────────────────
+
+    [RelayCommand]
+    private async Task UnlockAsync()
+    {
+        ErrorMessage = null;
+
+        if (string.IsNullOrWhiteSpace(Password))
+        {
+            ErrorMessage = "Введіть майстер-пароль для доступу до приватного сховища.";
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            // PBKDF2 — CPU-heavy, run off the UI thread
+            var hexKey = await Task.Run(() => _cryptoSvc.DeriveKey(Password));
+
+            if (!_privateDbService.TryUnlockWithKey(hexKey))
+            {
+                ErrorMessage = "Невірний пароль. Спробуйте ще раз.";
+                return;
+            }
+
+            // Ensure private schema exists (idempotent)
+            _privateDbService.Initialize();
+
+            var noteRepo = new NoteRepository(_privateDbService);
+            var bookRepo = new BookRepository(_privateDbService);
+
+            UnlockSucceeded?.Invoke(noteRepo, bookRepo);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Помилка розблокування: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy    = false;
+            Password  = string.Empty; // wipe from memory
+        }
+    }
+
+    [RelayCommand]
+    private void Cancel() => Cancelled?.Invoke();
 }
 
 
@@ -1494,6 +2260,31 @@ public partial class AppView : UserControl
                            TextWrapping="Wrap"
                            MaxWidth="300" />
 
+                <!-- ── Cancel button (shown only when called from mode switcher) ── -->
+                <Button Content="Скасувати"
+                        Command="{Binding CancelCommand}"
+                        IsVisible="{Binding CanCancel}"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"
+                        Padding="14,10"
+                        FontSize="13"
+                        CornerRadius="10">
+                    <Button.Styles>
+                        <Style Selector="Button">
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="Foreground" Value="#B8875A" />
+                            <Setter Property="BorderBrush" Value="#7A4A25" />
+                            <Setter Property="BorderThickness" Value="1" />
+                        </Style>
+                        <Style Selector="Button:pointerover /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#3A2212" />
+                        </Style>
+                        <Style Selector="Button:pressed /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#2B1B10" />
+                        </Style>
+                    </Button.Styles>
+                </Button>
+
             </StackPanel>
         </Border>
 
@@ -1530,63 +2321,209 @@ public partial class LoginView : UserControl
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:AmberNotes.ViewModels"
              xmlns:models="using:AmberNotes.Models"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="550"
+             mc:Ignorable="d" d:DesignWidth="820" d:DesignHeight="580"
              x:Class="AmberNotes.Views.MainView"
-             x:DataType="vm:MainViewModel">
+             x:DataType="vm:MainViewModel"
+             Background="{DynamicResource AppBackground}">
 
-  <Design.DataContext>
-    <vm:MainViewModel />
-  </Design.DataContext>
+  <!--
+    ═══════════════════════════════════════════════════════════════════════
+    MainView — Notes Dashboard (v0.4)
+    All colour references use DynamicResource so theme switches are instant.
+    ═══════════════════════════════════════════════════════════════════════
+  -->
 
+  <!-- Root: toolbar row + content row -->
   <Grid RowDefinitions="Auto,*">
 
-    <!-- ── Toolbar ── -->
+    <!-- ═══════════ TOOLBAR ═══════════════════════════════════════════════ -->
     <Border Grid.Row="0"
-            Padding="16,10"
+            Background="{DynamicResource AppToolbar}"
+            Padding="12,8"
             BorderThickness="0,0,0,1"
-            BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}">
-      <StackPanel Orientation="Horizontal" Spacing="8">
-        <Button Content="＋ Створити"
-                Command="{Binding CreateNoteCommand}"
-                Padding="14,7" />
-        <Button Content="✏ Редагувати"
-                Command="{Binding EditNoteCommand}"
-                Padding="14,7" />
-        <Button Content="🗑 Видалити"
-                Command="{Binding DeleteNoteCommand}"
-                Padding="14,7" />
-      </StackPanel>
+            BorderBrush="{DynamicResource AppBorder}">
+
+      <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+
+        <!-- ── Left: CRUD action buttons ──────────────────────────────── -->
+        <StackPanel Grid.Column="0"
+                    Orientation="Horizontal"
+                    Spacing="6"
+                    VerticalAlignment="Center">
+
+          <!-- Create Note -->
+          <Button Content="＋ Створити"
+                  Command="{Binding CreateNoteCommand}"
+                  Padding="12,7"
+                  CornerRadius="8"
+                  FontWeight="SemiBold"
+                  FontSize="13">
+            <Button.Styles>
+              <Style Selector="Button">
+                <Setter Property="Background" Value="{DynamicResource AppPrimary}" />
+                <Setter Property="Foreground" Value="{DynamicResource AppOnPrimary}" />
+                <Setter Property="BorderThickness" Value="0" />
+              </Style>
+              <Style Selector="Button:pointerover /template/ ContentPresenter">
+                <Setter Property="Opacity" Value="0.88" />
+              </Style>
+              <Style Selector="Button:pressed /template/ ContentPresenter">
+                <Setter Property="Opacity" Value="0.75" />
+              </Style>
+            </Button.Styles>
+          </Button>
+
+          <!-- Edit Note -->
+          <Button Content="✏"
+                  Command="{Binding EditNoteCommand}"
+                  Padding="10,7"
+                  CornerRadius="8"
+                  FontSize="14"
+                  ToolTip.Tip="Редагувати виділену нотатку" />
+
+          <!-- Delete Note -->
+          <Button Content="🗑"
+                  Command="{Binding DeleteNoteCommand}"
+                  Padding="10,7"
+                  CornerRadius="8"
+                  FontSize="14"
+                  ToolTip.Tip="Видалити виділену нотатку" />
+        </StackPanel>
+
+        <!-- ── Center: Mode switcher (segmented control) ──────────────── -->
+        <Border Grid.Column="1"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="{DynamicResource AppSurfaceVariant}"
+                CornerRadius="10"
+                Padding="3">
+
+          <StackPanel Orientation="Horizontal" Spacing="2">
+
+            <!-- PUBLIC button -->
+            <Panel>
+              <!-- Active state: non-interactive highlighted pill -->
+              <Border CornerRadius="7"
+                      Padding="12,6"
+                      Background="{DynamicResource AppBackground}"
+                      IsVisible="{Binding IsPublicMode}">
+                <TextBlock Text="🌐 Публічний"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource AppSecondary}"
+                           HorizontalAlignment="Center" />
+              </Border>
+              <!-- Inactive state: clickable to switch -->
+              <Button Content="🌐 Публічний"
+                      Command="{Binding SetPublicModeCommand}"
+                      Padding="12,6"
+                      CornerRadius="7"
+                      FontSize="12"
+                      IsVisible="{Binding IsPrivateMode}">
+                <Button.Styles>
+                  <Style Selector="Button">
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="Foreground" Value="{DynamicResource AppSubtext}" />
+                    <Setter Property="BorderThickness" Value="0" />
+                  </Style>
+                  <Style Selector="Button:pointerover /template/ ContentPresenter">
+                    <Setter Property="Background" Value="{DynamicResource AppSurface}" />
+                  </Style>
+                </Button.Styles>
+              </Button>
+            </Panel>
+
+            <!-- PRIVATE button -->
+            <Panel>
+              <!-- Active state: amber/primary highlight pill -->
+              <Border CornerRadius="7"
+                      Padding="12,6"
+                      Background="{DynamicResource AppPrimary}"
+                      IsVisible="{Binding IsPrivateMode}">
+                <TextBlock Text="🔒 Приватний"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource AppOnPrimary}"
+                           HorizontalAlignment="Center" />
+              </Border>
+              <!-- Inactive state: clickable to switch -->
+              <Button Content="🔒 Приватний"
+                      Command="{Binding SetPrivateModeCommand}"
+                      Padding="12,6"
+                      CornerRadius="7"
+                      FontSize="12"
+                      IsVisible="{Binding IsPublicMode}">
+                <Button.Styles>
+                  <Style Selector="Button">
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="Foreground" Value="{DynamicResource AppSubtext}" />
+                    <Setter Property="BorderThickness" Value="0" />
+                  </Style>
+                  <Style Selector="Button:pointerover /template/ ContentPresenter">
+                    <Setter Property="Background" Value="{DynamicResource AppSurface}" />
+                  </Style>
+                </Button.Styles>
+              </Button>
+            </Panel>
+
+          </StackPanel>
+        </Border>
+
+        <!-- ── Right: Theme toggle ────────────────────────────────────── -->
+        <Button Grid.Column="2"
+                Content="{Binding ThemeToggleIcon}"
+                Command="{Binding ToggleThemeCommand}"
+                ToolTip.Tip="{Binding ThemeToggleTip}"
+                Padding="10,7"
+                CornerRadius="8"
+                FontSize="16"
+                VerticalAlignment="Center" />
+
+      </Grid>
     </Border>
 
-    <!-- ── Notes list ── -->
+    <!-- ═══════════ NOTES LIST ═══════════════════════════════════════════ -->
     <Grid Grid.Row="1">
 
-      <!-- Empty state -->
+      <!-- Empty state message -->
       <TextBlock Text="Нотаток ще немає. Натисніть «＋ Створити»."
                  HorizontalAlignment="Center"
                  VerticalAlignment="Center"
-                 Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                 Foreground="{DynamicResource AppSubtext}"
                  FontSize="15"
                  IsVisible="{Binding !Notes.Count}" />
 
+      <!-- Notes list -->
       <ListBox ItemsSource="{Binding Notes}"
                SelectedItem="{Binding SelectedNote}"
-               Margin="0">
+               Margin="0"
+               Background="Transparent">
+        <ListBox.Styles>
+          <!-- Remove default ListBox background from Fluent theme -->
+          <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AppSurfaceVariant}" />
+          </Style>
+          <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AppSurface}" />
+          </Style>
+        </ListBox.Styles>
+
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="models:Note">
-            <Grid ColumnDefinitions="*,Auto" Margin="4,6">
+            <Grid ColumnDefinitions="*,Auto" Margin="8,6">
 
               <!-- Left: title + content preview -->
-              <StackPanel Grid.Column="0" Spacing="2">
+              <StackPanel Grid.Column="0" Spacing="3">
                 <TextBlock Text="{Binding Title}"
                            FontWeight="SemiBold"
                            FontSize="14"
+                           Foreground="{DynamicResource AppOnSurface}"
                            TextTrimming="CharacterEllipsis" />
                 <TextBlock Text="{Binding Content}"
                            FontSize="12"
                            MaxLines="2"
                            TextTrimming="CharacterEllipsis"
-                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                           Foreground="{DynamicResource AppSubtext}" />
               </StackPanel>
 
               <!-- Right: date + type badge -->
@@ -1598,14 +2535,14 @@ public partial class LoginView : UserControl
                 <TextBlock Text="{Binding NoteDateTime, StringFormat='{}{0:dd.MM.yyyy}'}"
                            FontSize="11"
                            HorizontalAlignment="Right"
-                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                           Foreground="{DynamicResource AppSubtext}" />
                 <Border CornerRadius="4"
                         Padding="6,2"
                         HorizontalAlignment="Right"
-                        Background="{DynamicResource SystemAccentColorLight2}">
+                        Background="{DynamicResource AppPrimary}">
                   <TextBlock Text="{Binding Type}"
                              FontSize="10"
-                             Foreground="White" />
+                             Foreground="{DynamicResource AppOnPrimary}" />
                 </Border>
               </StackPanel>
 
@@ -1616,17 +2553,39 @@ public partial class LoginView : UserControl
 
     </Grid>
 
-    <!-- Overlay for Android/SingleView dialogs -->
+    <!-- ═══════════ PRIVATE MODE GLOW OVERLAY ═══════════════════════════ -->
+    <!--
+      Rendered above all content (ZIndex=500) but IsHitTestVisible=False
+      so it never blocks clicks/taps.
+      Creates a warm amber border-glow around the entire view when in
+      Private mode — a subtle visual cue that data is protected.
+    -->
+    <Panel Grid.Row="0" Grid.RowSpan="2"
+           IsHitTestVisible="False"
+           IsVisible="{Binding IsPrivateMode}"
+           ZIndex="500">
+      <Border BorderBrush="{DynamicResource AppPrivateGlow}"
+              BorderThickness="3"
+              CornerRadius="0" />
+    </Panel>
+
+    <!-- ═══════════ DIALOG OVERLAY (Android / SingleView) ═══════════════ -->
+    <!--
+      On mobile platforms where we cannot open a real Window,
+      NoteEditView is shown here as a full-screen overlay.
+      MainView.axaml.cs toggles IsVisible and sets DialogContent.
+    -->
     <Panel Name="DialogOverlay"
            Grid.Row="0" Grid.RowSpan="2"
-           Background="#80000000"
-           IsVisible="False">
-      <Border Background="{DynamicResource SystemRegionBrush}"
-              CornerRadius="12"
+           Background="#88000000"
+           IsVisible="False"
+           ZIndex="1000">
+      <Border Background="{DynamicResource AppSurface}"
+              CornerRadius="14"
               Margin="16"
               HorizontalAlignment="Stretch"
               VerticalAlignment="Stretch"
-              BoxShadow="0 4 20 0 #40000000">
+              BoxShadow="0 6 32 0 #50000000">
         <ContentControl Name="DialogContent" />
       </Border>
     </Panel>
@@ -1770,85 +2729,247 @@ namespace AmberNotes.Views
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:AmberNotes.ViewModels"
+             xmlns:models="using:AmberNotes.Models"
+             xmlns:md="using:Markdown.Avalonia"
              mc:Ignorable="d"
              x:Class="AmberNotes.Views.NoteEditView"
-             x:DataType="vm:NoteEditViewModel">
+             x:DataType="vm:NoteEditViewModel"
+             Background="{DynamicResource AppSurface}">
 
-  <Design.DataContext>
-    <vm:NoteEditViewModel />
-  </Design.DataContext>
+  <!--
+    ═══════════════════════════════════════════════════════════════════════
+    NoteEditView — Markdown Editor (v0.4 / Step 18)
 
-  <Grid RowDefinitions="*,Auto" Margin="24">
+    Layout (4 rows):
+      [0] Header  — window title + Edit/Preview segmented toggle
+      [1] Meta    — Title TextBox, Book/Type/Date bar
+      [2] Content — TextBox (edit) OR MarkdownScrollViewer (preview)    *
+      [3] Footer  — Cancel / Save buttons
 
-    <!-- ── Fields ── -->
-    <ScrollViewer Grid.Row="0">
-      <StackPanel Spacing="14">
+    All colours via DynamicResource → works with AmberNoir + SaffronLinen.
+    ═══════════════════════════════════════════════════════════════════════
+  -->
+
+  <Grid RowDefinitions="Auto,Auto,*,Auto">
+
+    <!-- ═══ [0] HEADER ═══════════════════════════════════════════════════ -->
+    <Border Grid.Row="0"
+            Background="{DynamicResource AppToolbar}"
+            Padding="16,10"
+            BorderThickness="0,0,0,1"
+            BorderBrush="{DynamicResource AppBorder}">
+
+      <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+
+        <!-- Window title -->
+        <TextBlock Grid.Column="0"
+                   Text="{Binding WindowTitle}"
+                   FontSize="14" FontWeight="SemiBold"
+                   Foreground="{DynamicResource AppOnSurface}"
+                   VerticalAlignment="Center" />
+
+        <!-- ── Segmented: ✏ Редагування | 👁 Перегляд ───────────────── -->
+        <Border Grid.Column="1"
+                Background="{DynamicResource AppSurfaceVariant}"
+                CornerRadius="8"
+                Padding="3"
+                VerticalAlignment="Center"
+                ToolTip.Tip="{Binding EditorModeTip}">
+
+          <StackPanel Orientation="Horizontal" Spacing="2">
+
+            <!-- EDIT pill -->
+            <Panel>
+              <!-- Active: non-interactive amber highlight -->
+              <Border CornerRadius="5" Padding="12,5"
+                      Background="{DynamicResource AppPrimary}"
+                      IsVisible="{Binding IsEditMode}">
+                <TextBlock Text="✏ Редагування"
+                           FontSize="12" FontWeight="SemiBold"
+                           Foreground="{DynamicResource AppOnPrimary}" />
+              </Border>
+              <!-- Inactive: clickable to switch to edit -->
+              <Button Content="✏ Редагування"
+                      Command="{Binding ToggleEditorModeCommand}"
+                      Padding="12,5" CornerRadius="5" FontSize="12"
+                      IsVisible="{Binding IsPreviewMode}">
+                <Button.Styles>
+                  <Style Selector="Button">
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="Foreground" Value="{DynamicResource AppSubtext}" />
+                    <Setter Property="BorderThickness" Value="0" />
+                  </Style>
+                  <Style Selector="Button:pointerover /template/ ContentPresenter">
+                    <Setter Property="Background" Value="{DynamicResource AppSurface}" />
+                    <Setter Property="CornerRadius" Value="5" />
+                  </Style>
+                </Button.Styles>
+              </Button>
+            </Panel>
+
+            <!-- PREVIEW pill -->
+            <Panel>
+              <!-- Active: amber highlight -->
+              <Border CornerRadius="5" Padding="12,5"
+                      Background="{DynamicResource AppPrimary}"
+                      IsVisible="{Binding IsPreviewMode}">
+                <TextBlock Text="👁 Перегляд"
+                           FontSize="12" FontWeight="SemiBold"
+                           Foreground="{DynamicResource AppOnPrimary}" />
+              </Border>
+              <!-- Inactive: clickable to switch to preview -->
+              <Button Content="👁 Перегляд"
+                      Command="{Binding ToggleEditorModeCommand}"
+                      Padding="12,5" CornerRadius="5" FontSize="12"
+                      IsVisible="{Binding IsEditMode}">
+                <Button.Styles>
+                  <Style Selector="Button">
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="Foreground" Value="{DynamicResource AppSubtext}" />
+                    <Setter Property="BorderThickness" Value="0" />
+                  </Style>
+                  <Style Selector="Button:pointerover /template/ ContentPresenter">
+                    <Setter Property="Background" Value="{DynamicResource AppSurface}" />
+                    <Setter Property="CornerRadius" Value="5" />
+                  </Style>
+                </Button.Styles>
+              </Button>
+            </Panel>
+
+          </StackPanel>
+        </Border>
+
+      </Grid>
+    </Border>
+
+    <!-- ═══ [1] META (Title + Book/Type/Date) ════════════════════════════ -->
+    <Border Grid.Row="1"
+            Background="{DynamicResource AppSurface}"
+            Padding="16,12"
+            BorderThickness="0,0,0,1"
+            BorderBrush="{DynamicResource AppDivider}">
+
+      <StackPanel Spacing="8">
 
         <!-- Title -->
-        <StackPanel Spacing="4">
-          <TextBlock Text="Заголовок" FontWeight="SemiBold" />
-          <TextBox Text="{Binding Title}"
-                   PlaceholderText="Введіть заголовок…"
-                   MaxLength="200" />
-        </StackPanel>
+        <TextBox Text="{Binding Title}"
+                 PlaceholderText="Заголовок нотатки…"
+                 MaxLength="200"
+                 FontSize="15"
+                 FontWeight="SemiBold"
+                 Background="{DynamicResource AppSurfaceVariant}"
+                 Foreground="{DynamicResource AppOnSurface}"
+                 BorderThickness="0"
+                 Padding="10,7"
+                 CornerRadius="6" />
 
-        <!-- Content -->
-        <StackPanel Spacing="4">
-          <TextBlock Text="Текст нотатки" FontWeight="SemiBold" />
-          <TextBox Text="{Binding Content}"
-                   PlaceholderText="Введіть текст…"
-                   AcceptsReturn="True"
-                   TextWrapping="Wrap"
-                   MinHeight="140"
-                   MaxHeight="240" />
-        </StackPanel>
+        <!-- Book / Type / Date row -->
+        <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="8">
 
-        <!-- Book -->
-        <StackPanel Spacing="4">
-          <TextBlock Text="Книга" FontWeight="SemiBold" />
-          <ComboBox ItemsSource="{Binding Books}"
+          <!-- Book picker -->
+          <ComboBox Grid.Column="0"
+                    ItemsSource="{Binding Books}"
                     SelectedItem="{Binding SelectedBook}"
                     HorizontalAlignment="Stretch">
             <ComboBox.ItemTemplate>
-              <DataTemplate>
+              <DataTemplate x:DataType="models:Book">
                 <TextBlock Text="{Binding Name}" />
               </DataTemplate>
             </ComboBox.ItemTemplate>
           </ComboBox>
-        </StackPanel>
 
-        <!-- Type -->
-        <StackPanel Spacing="4">
-          <TextBlock Text="Тип" FontWeight="SemiBold" />
-          <ComboBox ItemsSource="{Binding NoteTypes}"
+          <!-- Note type -->
+          <ComboBox Grid.Column="1"
+                    ItemsSource="{Binding NoteTypes}"
                     SelectedItem="{Binding SelectedType}"
                     HorizontalAlignment="Stretch" />
-        </StackPanel>
 
-        <!-- Date -->
-        <StackPanel Spacing="4">
-          <TextBlock Text="Дата запису" FontWeight="SemiBold" />
-          <CalendarDatePicker SelectedDate="{Binding NoteDate}"
-                              HorizontalAlignment="Stretch" />
-        </StackPanel>
+          <!-- Note date -->
+          <CalendarDatePicker Grid.Column="2"
+                              SelectedDate="{Binding NoteDate}"
+                              VerticalAlignment="Center" />
+        </Grid>
 
       </StackPanel>
-    </ScrollViewer>
+    </Border>
 
-    <!-- ── Buttons ── -->
-    <StackPanel Grid.Row="1"
-                Orientation="Horizontal"
-                HorizontalAlignment="Right"
-                Spacing="12"
-                Margin="0,16,0,0">
-      <Button Content="Скасувати"
-              Command="{Binding CancelCommand}"
-              MinWidth="100" Padding="16,8" />
-      <Button Content="Зберегти"
-              Command="{Binding SaveCommand}"
-              Classes="accent"
-              MinWidth="100" Padding="16,8" />
-    </StackPanel>
+    <!-- ═══ [2] CONTENT AREA ════════════════════════════════════════════ -->
+    <Grid Grid.Row="2">
+
+      <!-- ── EDIT MODE: Monospace Markdown TextBox ─────────────────── -->
+      <!--
+        • Monospace font chain: Cascadia Code → Cascadia Mono → Courier New → system Monospace
+        • AcceptsReturn + TextWrapping for multi-line editing
+        • Background/Foreground from theme so dark/light work correctly
+        • Hint at the bottom via placeholder text with Markdown syntax examples
+      -->
+      <TextBox IsVisible="{Binding IsEditMode}"
+               Text="{Binding Content}"
+               PlaceholderText="# Заголовок&#x0a;&#x0a;**Жирний**, *курсив*, `код`&#x0a;&#x0a;- Пункт 1&#x0a;- Пункт 2"
+               AcceptsReturn="True"
+               TextWrapping="Wrap"
+               FontFamily="Cascadia Code,Cascadia Mono,Courier New,Monospace"
+               FontSize="13"
+               LineHeight="20"
+               Padding="16"
+               Background="{DynamicResource AppBackground}"
+               Foreground="{DynamicResource AppOnBackground}"
+               BorderThickness="0"
+               CornerRadius="0"
+               VerticalAlignment="Stretch"
+               HorizontalAlignment="Stretch"
+               ScrollViewer.VerticalScrollBarVisibility="Auto"
+               ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
+
+      <!-- ── PREVIEW MODE: Rendered Markdown ─────────────────────── -->
+      <!--
+        MarkdownScrollViewer (Markdown.Avalonia 12.0.0-a3):
+        • Natively renders Markdown via Markdig pipeline into Avalonia controls
+        • Inherits FluentTheme / RequestedThemeVariant → adapts to dark/light
+        • Wrapped in Border to add themed background + breathing room padding
+      -->
+      <Border IsVisible="{Binding IsPreviewMode}"
+              Background="{DynamicResource AppBackground}"
+              Padding="16,12">
+        <md:MarkdownScrollViewer Markdown="{Binding Content}" />
+      </Border>
+
+    </Grid>
+
+    <!-- ═══ [3] FOOTER (Cancel / Save) ═════════════════════════════════ -->
+    <Border Grid.Row="3"
+            Background="{DynamicResource AppToolbar}"
+            Padding="16,10"
+            BorderThickness="0,1,0,0"
+            BorderBrush="{DynamicResource AppBorder}">
+
+      <StackPanel Orientation="Horizontal"
+                  HorizontalAlignment="Right"
+                  Spacing="10">
+
+        <Button Content="Скасувати"
+                Command="{Binding CancelCommand}"
+                MinWidth="100" Padding="14,8" />
+
+        <Button Content="Зберегти"
+                Command="{Binding SaveCommand}"
+                Classes="accent"
+                MinWidth="100" Padding="14,8">
+          <Button.Styles>
+            <Style Selector="Button.accent">
+              <Setter Property="Background" Value="{DynamicResource AppPrimary}" />
+              <Setter Property="Foreground" Value="{DynamicResource AppOnPrimary}" />
+              <Setter Property="BorderThickness" Value="0" />
+              <Setter Property="FontWeight" Value="SemiBold" />
+            </Style>
+            <Style Selector="Button.accent:pointerover /template/ ContentPresenter">
+              <Setter Property="Opacity" Value="0.88" />
+            </Style>
+          </Button.Styles>
+        </Button>
+
+      </StackPanel>
+    </Border>
 
   </Grid>
 </UserControl>
@@ -1872,6 +2993,210 @@ public partial class NoteEditView : UserControl
     public NoteEditView(NoteEditViewModel vm) : this()
     {
         DataContext = vm;
+    }
+}
+
+
+
+--- FILE: .\AmberNotes\Views\PrivateUnlockView.axaml ---
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:AmberNotes.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="360"
+             x:Class="AmberNotes.Views.PrivateUnlockView"
+             x:DataType="vm:PrivateUnlockViewModel"
+             Background="Transparent">
+
+    <!-- Enter key triggers unlock from any focused field -->
+    <UserControl.KeyBindings>
+        <KeyBinding Gesture="Enter" Command="{Binding UnlockCommand}" />
+        <KeyBinding Gesture="Escape" Command="{Binding CancelCommand}" />
+    </UserControl.KeyBindings>
+
+    <UserControl.Styles>
+        <!-- Amber-tinted TextBox — local override for this overlay -->
+        <Style Selector="TextBox">
+            <Setter Property="Background"     Value="#3A2212" />
+            <Setter Property="BorderBrush"    Value="#7A4A25" />
+            <Setter Property="Foreground"     Value="#F5E6C8" />
+            <Setter Property="CaretBrush"     Value="#FFBF00" />
+            <Setter Property="SelectionBrush" Value="#80FFBF00" />
+            <Setter Property="CornerRadius"   Value="8" />
+            <Setter Property="Padding"        Value="12,10" />
+            <Setter Property="FontSize"       Value="14" />
+        </Style>
+        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="#FFBF00" />
+        </Style>
+        <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="#C49030" />
+        </Style>
+    </UserControl.Styles>
+
+    <!-- Centered unlock card -->
+    <Border CornerRadius="16"
+            Background="#2A1A0A"
+            BorderBrush="#5A3518"
+            BorderThickness="1"
+            Padding="36,28"
+            MaxWidth="400"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            BoxShadow="0 8 60 0 #B0000000">
+
+        <StackPanel Spacing="18">
+
+            <!-- ── Icon + Title ── -->
+            <StackPanel Spacing="6" HorizontalAlignment="Center">
+                <TextBlock Text="🔒"
+                           FontSize="40"
+                           HorizontalAlignment="Center" />
+                <TextBlock Text="Приватний режим"
+                           FontSize="20"
+                           FontWeight="Bold"
+                           Foreground="#FFBF00"
+                           HorizontalAlignment="Center"
+                           LetterSpacing="0.3" />
+                <TextBlock Text="Введіть майстер-пароль для доступу до приватних нотаток"
+                           FontSize="12"
+                           Foreground="#9A7040"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap"
+                           MaxWidth="280" />
+            </StackPanel>
+
+            <!-- Divider -->
+            <Border Height="1" Background="#4A3018" Margin="0,2" />
+
+            <!-- ── Password field ── -->
+            <StackPanel Spacing="6">
+                <TextBlock Text="Майстер-пароль"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           Foreground="#C49030"
+                           Margin="2,0,0,0" />
+                <TextBox x:Name="PasswordInput"
+                         Text="{Binding Password}"
+                         PasswordChar="•"
+                         PlaceholderText="Введіть пароль..."
+                         IsEnabled="{Binding IsNotBusy}" />
+            </StackPanel>
+
+            <!-- ── Error message ── -->
+            <Border Background="#3D0E0E"
+                    BorderBrush="#6B1A1A"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="12,8"
+                    IsVisible="{Binding HasError}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="⚠"
+                               Foreground="#FF7070"
+                               FontSize="13"
+                               VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding ErrorMessage}"
+                               Foreground="#FF9090"
+                               FontSize="12"
+                               TextWrapping="Wrap"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
+
+            <!-- ── Progress bar ── -->
+            <ProgressBar IsIndeterminate="True"
+                         IsVisible="{Binding IsBusy}"
+                         Foreground="#FFBF00"
+                         Background="#5A3518"
+                         Height="3"
+                         CornerRadius="2"
+                         Margin="0,-10,0,0" />
+
+            <!-- ── Action buttons ── -->
+            <Grid ColumnDefinitions="*,10,*">
+
+                <!-- Cancel -->
+                <Button Grid.Column="0"
+                        Content="Скасувати"
+                        Command="{Binding CancelCommand}"
+                        IsEnabled="{Binding IsNotBusy}"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"
+                        Padding="12,11"
+                        FontSize="14"
+                        CornerRadius="9">
+                    <Button.Styles>
+                        <Style Selector="Button">
+                            <Setter Property="Background" Value="#3A2515" />
+                            <Setter Property="Foreground" Value="#C49030" />
+                            <Setter Property="BorderBrush" Value="#5A3518" />
+                            <Setter Property="BorderThickness" Value="1" />
+                        </Style>
+                        <Style Selector="Button:pointerover /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#4A3020" />
+                        </Style>
+                    </Button.Styles>
+                </Button>
+
+                <!-- Unlock -->
+                <Button Grid.Column="2"
+                        Content="Розблокувати"
+                        Command="{Binding UnlockCommand}"
+                        IsEnabled="{Binding IsNotBusy}"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"
+                        Padding="12,11"
+                        FontSize="14"
+                        FontWeight="SemiBold"
+                        CornerRadius="9">
+                    <Button.Styles>
+                        <Style Selector="Button">
+                            <Setter Property="Background" Value="#FFBF00" />
+                            <Setter Property="Foreground" Value="#1E100A" />
+                            <Setter Property="BorderThickness" Value="0" />
+                        </Style>
+                        <Style Selector="Button:pointerover /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#FFCF30" />
+                        </Style>
+                        <Style Selector="Button:pressed /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#E0A800" />
+                        </Style>
+                        <Style Selector="Button:disabled /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#6B5010" />
+                            <Setter Property="TextElement.Foreground" Value="#A08040" />
+                        </Style>
+                    </Button.Styles>
+                </Button>
+
+            </Grid>
+
+        </StackPanel>
+    </Border>
+
+</UserControl>
+
+
+
+--- FILE: .\AmberNotes\Views\PrivateUnlockView.axaml.cs ---
+
+using Avalonia.Controls;
+
+namespace AmberNotes.Views;
+
+public partial class PrivateUnlockView : UserControl
+{
+    public PrivateUnlockView()
+    {
+        InitializeComponent();
+
+        // Auto-focus the password field when the overlay appears
+        AttachedToVisualTree += (_, _) =>
+        {
+            PasswordInput?.Focus();
+        };
     }
 }
 

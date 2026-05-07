@@ -36,6 +36,20 @@ public partial class NoteEditViewModel : ViewModelBase
     [ObservableProperty]
     private string _windowTitle = "Нова нотатка";
 
+    // ── Editor Mode (Edit / Preview) ─────────────────────────────────────────
+
+    /// <summary>True = raw Markdown editor visible; False = rendered preview visible.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPreviewMode))]
+    [NotifyPropertyChangedFor(nameof(EditorModeTip))]
+    private bool _isEditMode = true;
+
+    public bool IsPreviewMode => !IsEditMode;
+
+    public string EditorModeTip => IsEditMode
+        ? "Переключитись на перегляд Markdown"
+        : "Переключитись на редагування";
+
     // ── Collections ───────────────────────────────────────────────────────────
 
     public ObservableCollection<Book> Books { get; } = [];
@@ -107,6 +121,10 @@ public partial class NoteEditViewModel : ViewModelBase
 
         Saved?.Invoke(note);
     }
+
+    /// <summary>Switches between raw Markdown editor and rendered preview.</summary>
+    [RelayCommand]
+    private void ToggleEditorMode() => IsEditMode = !IsEditMode;
 
     [RelayCommand]
     private void Cancel() => Cancelled?.Invoke();

@@ -71,7 +71,7 @@ MainWindow / AppView
 - [x] **Крок 15: Themes.** Створення ResourceDictionary для "Amber Noir" та "Saffron Linen". Налаштування DynamicResource для всіх компонентів.
 - [x] **Крок 16: ModeSwitcher.** Реалізація сервісу перемикання режимів та UI-контрола в Header.
 - [x] **Крок 17: Security Bridge.** Оновлення логіки входу: запит пароля лише для Приватного режиму. Розділення потоків даних Public/Private.
-- [ ] **Крок 18: Markdown Core.** Підключення Markdig. Створення NoteEditorView з підтримкою Markdown-розмітки.
+- [x] **Крок 18: Markdown Core.** Підключення Markdig + Markdown.Avalonia. Створення NoteEditorView з підтримкою Markdown-розмітки та перемикачем Edit/Preview.
 - [ ] **Крок 19: Single-Window Navigation.** Впровадження ViewLocator або Router для зміни екранів (List <-> Editor) без нових вікон.
 
 
@@ -176,4 +176,29 @@ MainWindow / AppView
 - **Зроблено (MainView.axaml):** Видалено `Panel (ZIndex=800)` з `ContentControl Content="{Binding UnlockOverlay}"`. `PrivateUnlockView` overlay більше не потрібен.
 
 - **Результат:** `dotnet build` — **succeeded** ✅ (0 помилок, 0 попереджень, Desktop)
-- **Наступний крок:** Крок 18 — Markdown Core (Markdig + NoteEditorView з Live Preview).
+
+### 2026-05-07 — Крок 18: Markdown Core (v0.4 продовження)
+
+- **NuGet пакети:** Додано `Markdig 1.1.3` та `Markdown.Avalonia 12.0.0-a3` (pre-release, сумісний з Avalonia 12.x) до `Directory.Packages.props` та `AmberNotes.csproj`.
+
+- **Зроблено (NoteEditViewModel.cs):**
+  - Нова властивість `IsEditMode` (`[ObservableProperty]`, default `true`) — перемикач режимів.
+  - Обчислювана `IsPreviewMode` (= `!IsEditMode`) для `IsVisible` в UI.
+  - Обчислювана `EditorModeTip` — tooltip для сегментованого перемикача.
+  - Нова команда `ToggleEditorModeCommand` (`[RelayCommand]`) — інвертує `IsEditMode`.
+
+- **Зроблено (NoteEditView.axaml) — повна переробка:**
+  - **[Row 0] Header:** Назва вікна (`WindowTitle`) + Segmented-перемикач "✏ Редагування / 👁 Перегляд". Активна таблетка — бурштиновий `Border` (amber `AppPrimary`), неактивна — прозорий `Button`. DynamicResource кольори.
+  - **[Row 1] Meta-смуга:** Поле заголовку (`FontSize=15, SemiBold, AppSurfaceVariant фон, без рамки`) + рядок Книга/Тип/Дата в `Grid` 3 колонки. `DataTemplate x:DataType="models:Book"` для ComboBox.
+  - **[Row 2] Контент:**
+    - *Edit mode:* `TextBox` з моноширинним шрифтом `"Cascadia Code,Cascadia Mono,Courier New,Monospace"`, `FontSize=13`, `LineHeight=20`, `AcceptsReturn=True`, `TextWrapping=Wrap`, `AppBackground/AppOnBackground` — повністю тематизований.
+    - *Preview mode:* `md:MarkdownScrollViewer` (з namespace `using:Markdown.Avalonia`) із прив'язкою `Markdown="{Binding Content}"`, загорнутий у `Border` з `AppBackground`.
+  - **[Row 3] Footer:** Кнопки "Скасувати" + "Зберегти" (клас `accent`, локальні стилі з `AppPrimary/AppOnPrimary`).
+  - Всі кольори через `DynamicResource` — теми Amber Noir / Saffron Linen переключаються миттєво.
+
+- **Зроблено (App.axaml):** Namespace `Markdown.Avalonia` оголошено на кореневому елементі. В цій alpha-версії `MarkdownScrollViewer` реєструє стилі самостійно — явне додавання до `Application.Styles` не потрібне.
+
+- **Технічна примітка:** `Markdown.Avalonia 12.0.0-a3` — `MarkdownStyle` у цьому релізі не реалізує `Avalonia.Styling.IStyle` і не потребує явного додавання до `Application.Styles`. `MarkdownScrollViewer` рендерить Markdown через внутрішній Markdig-пайплайн, нативними Avalonia-контролами.
+
+- **Результат:** `dotnet build` — **succeeded** ✅ (0 помилок, 0 попереджень, Desktop)
+- **Наступний крок:** Крок 19 — Single-Window Navigation (List ↔ Editor без нових вікон).
