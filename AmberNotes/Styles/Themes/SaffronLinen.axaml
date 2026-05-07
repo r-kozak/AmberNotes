@@ -1,0 +1,62 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        ══════════════════════════════════════════════════════════
+        Saffron Linen — Warm Light Theme (v0.4)
+        Background : Warm parchment  #F4F1EA
+        Accent     : Saffron         #D97706
+        ══════════════════════════════════════════════════════════
+    -->
+
+    <!-- ── Background Layers ─────────────────────────────────── -->
+    <Color x:Key="AppBackgroundColor">#F4F1EA</Color>
+    <Color x:Key="AppSurfaceColor">#FDFAF4</Color>
+    <Color x:Key="AppSurfaceVariantColor">#EDE8DE</Color>
+    <Color x:Key="AppToolbarColor">#EDE8DE</Color>
+
+    <!-- ── Text ──────────────────────────────────────────────── -->
+    <Color x:Key="AppOnBackgroundColor">#2A2010</Color>
+    <Color x:Key="AppOnSurfaceColor">#3A2E18</Color>
+    <Color x:Key="AppSubtextColor">#6B5C3E</Color>
+
+    <!-- ── Accent (Saffron) ──────────────────────────────────── -->
+    <Color x:Key="AppPrimaryColor">#D97706</Color>
+    <Color x:Key="AppOnPrimaryColor">#FFFFFF</Color>
+    <Color x:Key="AppSecondaryColor">#A85D00</Color>
+
+    <!-- ── Borders / Dividers ────────────────────────────────── -->
+    <Color x:Key="AppBorderColor">#D8CDB8</Color>
+    <Color x:Key="AppDividerColor">#E0D8CC</Color>
+
+    <!-- ── Private-mode glow overlay ────────────────────────── -->
+    <Color x:Key="AppPrivateGlowColor">#80D97706</Color>
+
+    <!-- ── Badges ────────────────────────────────────────────── -->
+    <Color x:Key="AppPrivateBadgeColor">#FDE68A</Color>
+    <Color x:Key="AppPublicBadgeColor">#BBF7D0</Color>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- Brushes (DynamicResource-ready)                         -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+
+    <SolidColorBrush x:Key="AppBackground"     Color="{StaticResource AppBackgroundColor}" />
+    <SolidColorBrush x:Key="AppSurface"        Color="{StaticResource AppSurfaceColor}" />
+    <SolidColorBrush x:Key="AppSurfaceVariant" Color="{StaticResource AppSurfaceVariantColor}" />
+    <SolidColorBrush x:Key="AppToolbar"        Color="{StaticResource AppToolbarColor}" />
+    <SolidColorBrush x:Key="AppOnBackground"   Color="{StaticResource AppOnBackgroundColor}" />
+    <SolidColorBrush x:Key="AppOnSurface"      Color="{StaticResource AppOnSurfaceColor}" />
+    <SolidColorBrush x:Key="AppSubtext"        Color="{StaticResource AppSubtextColor}" />
+    <SolidColorBrush x:Key="AppPrimary"        Color="{StaticResource AppPrimaryColor}" />
+    <SolidColorBrush x:Key="AppOnPrimary"      Color="{StaticResource AppOnPrimaryColor}" />
+    <SolidColorBrush x:Key="AppSecondary"      Color="{StaticResource AppSecondaryColor}" />
+    <SolidColorBrush x:Key="AppBorder"         Color="{StaticResource AppBorderColor}" />
+    <SolidColorBrush x:Key="AppDivider"        Color="{StaticResource AppDividerColor}" />
+    <SolidColorBrush x:Key="AppPrivateGlow"    Color="{StaticResource AppPrivateGlowColor}" />
+    <SolidColorBrush x:Key="AppPrivateBadge"   Color="{StaticResource AppPrivateBadgeColor}" />
+    <SolidColorBrush x:Key="AppPublicBadge"    Color="{StaticResource AppPublicBadgeColor}" />
+
+    <!-- Marker key used by ThemeService to identify our dictionaries -->
+    <x:String x:Key="AppThemeKey">SaffronLinen</x:String>
+
+</ResourceDictionary>

@@ -4,63 +4,209 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:AmberNotes.ViewModels"
              xmlns:models="using:AmberNotes.Models"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="550"
+             mc:Ignorable="d" d:DesignWidth="820" d:DesignHeight="580"
              x:Class="AmberNotes.Views.MainView"
-             x:DataType="vm:MainViewModel">
+             x:DataType="vm:MainViewModel"
+             Background="{DynamicResource AppBackground}">
 
-  <Design.DataContext>
-    <vm:MainViewModel />
-  </Design.DataContext>
+  <!--
+    ═══════════════════════════════════════════════════════════════════════
+    MainView — Notes Dashboard (v0.4)
+    All colour references use DynamicResource so theme switches are instant.
+    ═══════════════════════════════════════════════════════════════════════
+  -->
 
+  <!-- Root: toolbar row + content row -->
   <Grid RowDefinitions="Auto,*">
 
-    <!-- ── Toolbar ── -->
+    <!-- ═══════════ TOOLBAR ═══════════════════════════════════════════════ -->
     <Border Grid.Row="0"
-            Padding="16,10"
+            Background="{DynamicResource AppToolbar}"
+            Padding="12,8"
             BorderThickness="0,0,0,1"
-            BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}">
-      <StackPanel Orientation="Horizontal" Spacing="8">
-        <Button Content="＋ Створити"
-                Command="{Binding CreateNoteCommand}"
-                Padding="14,7" />
-        <Button Content="✏ Редагувати"
-                Command="{Binding EditNoteCommand}"
-                Padding="14,7" />
-        <Button Content="🗑 Видалити"
-                Command="{Binding DeleteNoteCommand}"
-                Padding="14,7" />
-      </StackPanel>
+            BorderBrush="{DynamicResource AppBorder}">
+
+      <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+
+        <!-- ── Left: CRUD action buttons ──────────────────────────────── -->
+        <StackPanel Grid.Column="0"
+                    Orientation="Horizontal"
+                    Spacing="6"
+                    VerticalAlignment="Center">
+
+          <!-- Create Note -->
+          <Button Content="＋ Створити"
+                  Command="{Binding CreateNoteCommand}"
+                  Padding="12,7"
+                  CornerRadius="8"
+                  FontWeight="SemiBold"
+                  FontSize="13">
+            <Button.Styles>
+              <Style Selector="Button">
+                <Setter Property="Background" Value="{DynamicResource AppPrimary}" />
+                <Setter Property="Foreground" Value="{DynamicResource AppOnPrimary}" />
+                <Setter Property="BorderThickness" Value="0" />
+              </Style>
+              <Style Selector="Button:pointerover /template/ ContentPresenter">
+                <Setter Property="Opacity" Value="0.88" />
+              </Style>
+              <Style Selector="Button:pressed /template/ ContentPresenter">
+                <Setter Property="Opacity" Value="0.75" />
+              </Style>
+            </Button.Styles>
+          </Button>
+
+          <!-- Edit Note -->
+          <Button Content="✏"
+                  Command="{Binding EditNoteCommand}"
+                  Padding="10,7"
+                  CornerRadius="8"
+                  FontSize="14"
+                  ToolTip.Tip="Редагувати виділену нотатку" />
+
+          <!-- Delete Note -->
+          <Button Content="🗑"
+                  Command="{Binding DeleteNoteCommand}"
+                  Padding="10,7"
+                  CornerRadius="8"
+                  FontSize="14"
+                  ToolTip.Tip="Видалити виділену нотатку" />
+        </StackPanel>
+
+        <!-- ── Center: Mode switcher (segmented control) ──────────────── -->
+        <Border Grid.Column="1"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Background="{DynamicResource AppSurfaceVariant}"
+                CornerRadius="10"
+                Padding="3">
+
+          <StackPanel Orientation="Horizontal" Spacing="2">
+
+            <!-- PUBLIC button -->
+            <Panel>
+              <!-- Active state: non-interactive highlighted pill -->
+              <Border CornerRadius="7"
+                      Padding="12,6"
+                      Background="{DynamicResource AppBackground}"
+                      IsVisible="{Binding IsPublicMode}">
+                <TextBlock Text="🌐 Публічний"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource AppSecondary}"
+                           HorizontalAlignment="Center" />
+              </Border>
+              <!-- Inactive state: clickable to switch -->
+              <Button Content="🌐 Публічний"
+                      Command="{Binding SetPublicModeCommand}"
+                      Padding="12,6"
+                      CornerRadius="7"
+                      FontSize="12"
+                      IsVisible="{Binding IsPrivateMode}">
+                <Button.Styles>
+                  <Style Selector="Button">
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="Foreground" Value="{DynamicResource AppSubtext}" />
+                    <Setter Property="BorderThickness" Value="0" />
+                  </Style>
+                  <Style Selector="Button:pointerover /template/ ContentPresenter">
+                    <Setter Property="Background" Value="{DynamicResource AppSurface}" />
+                  </Style>
+                </Button.Styles>
+              </Button>
+            </Panel>
+
+            <!-- PRIVATE button -->
+            <Panel>
+              <!-- Active state: amber/primary highlight pill -->
+              <Border CornerRadius="7"
+                      Padding="12,6"
+                      Background="{DynamicResource AppPrimary}"
+                      IsVisible="{Binding IsPrivateMode}">
+                <TextBlock Text="🔒 Приватний"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource AppOnPrimary}"
+                           HorizontalAlignment="Center" />
+              </Border>
+              <!-- Inactive state: clickable to switch -->
+              <Button Content="🔒 Приватний"
+                      Command="{Binding SetPrivateModeCommand}"
+                      Padding="12,6"
+                      CornerRadius="7"
+                      FontSize="12"
+                      IsVisible="{Binding IsPublicMode}">
+                <Button.Styles>
+                  <Style Selector="Button">
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="Foreground" Value="{DynamicResource AppSubtext}" />
+                    <Setter Property="BorderThickness" Value="0" />
+                  </Style>
+                  <Style Selector="Button:pointerover /template/ ContentPresenter">
+                    <Setter Property="Background" Value="{DynamicResource AppSurface}" />
+                  </Style>
+                </Button.Styles>
+              </Button>
+            </Panel>
+
+          </StackPanel>
+        </Border>
+
+        <!-- ── Right: Theme toggle ────────────────────────────────────── -->
+        <Button Grid.Column="2"
+                Content="{Binding ThemeToggleIcon}"
+                Command="{Binding ToggleThemeCommand}"
+                ToolTip.Tip="{Binding ThemeToggleTip}"
+                Padding="10,7"
+                CornerRadius="8"
+                FontSize="16"
+                VerticalAlignment="Center" />
+
+      </Grid>
     </Border>
 
-    <!-- ── Notes list ── -->
+    <!-- ═══════════ NOTES LIST ═══════════════════════════════════════════ -->
     <Grid Grid.Row="1">
 
-      <!-- Empty state -->
+      <!-- Empty state message -->
       <TextBlock Text="Нотаток ще немає. Натисніть «＋ Створити»."
                  HorizontalAlignment="Center"
                  VerticalAlignment="Center"
-                 Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                 Foreground="{DynamicResource AppSubtext}"
                  FontSize="15"
                  IsVisible="{Binding !Notes.Count}" />
 
+      <!-- Notes list -->
       <ListBox ItemsSource="{Binding Notes}"
                SelectedItem="{Binding SelectedNote}"
-               Margin="0">
+               Margin="0"
+               Background="Transparent">
+        <ListBox.Styles>
+          <!-- Remove default ListBox background from Fluent theme -->
+          <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AppSurfaceVariant}" />
+          </Style>
+          <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AppSurface}" />
+          </Style>
+        </ListBox.Styles>
+
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="models:Note">
-            <Grid ColumnDefinitions="*,Auto" Margin="4,6">
+            <Grid ColumnDefinitions="*,Auto" Margin="8,6">
 
               <!-- Left: title + content preview -->
-              <StackPanel Grid.Column="0" Spacing="2">
+              <StackPanel Grid.Column="0" Spacing="3">
                 <TextBlock Text="{Binding Title}"
                            FontWeight="SemiBold"
                            FontSize="14"
+                           Foreground="{DynamicResource AppOnSurface}"
                            TextTrimming="CharacterEllipsis" />
                 <TextBlock Text="{Binding Content}"
                            FontSize="12"
                            MaxLines="2"
                            TextTrimming="CharacterEllipsis"
-                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                           Foreground="{DynamicResource AppSubtext}" />
               </StackPanel>
 
               <!-- Right: date + type badge -->
@@ -72,14 +218,14 @@
                 <TextBlock Text="{Binding NoteDateTime, StringFormat='{}{0:dd.MM.yyyy}'}"
                            FontSize="11"
                            HorizontalAlignment="Right"
-                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                           Foreground="{DynamicResource AppSubtext}" />
                 <Border CornerRadius="4"
                         Padding="6,2"
                         HorizontalAlignment="Right"
-                        Background="{DynamicResource SystemAccentColorLight2}">
+                        Background="{DynamicResource AppPrimary}">
                   <TextBlock Text="{Binding Type}"
                              FontSize="10"
-                             Foreground="White" />
+                             Foreground="{DynamicResource AppOnPrimary}" />
                 </Border>
               </StackPanel>
 
@@ -90,17 +236,39 @@
 
     </Grid>
 
-    <!-- Overlay for Android/SingleView dialogs -->
+    <!-- ═══════════ PRIVATE MODE GLOW OVERLAY ═══════════════════════════ -->
+    <!--
+      Rendered above all content (ZIndex=500) but IsHitTestVisible=False
+      so it never blocks clicks/taps.
+      Creates a warm amber border-glow around the entire view when in
+      Private mode — a subtle visual cue that data is protected.
+    -->
+    <Panel Grid.Row="0" Grid.RowSpan="2"
+           IsHitTestVisible="False"
+           IsVisible="{Binding IsPrivateMode}"
+           ZIndex="500">
+      <Border BorderBrush="{DynamicResource AppPrivateGlow}"
+              BorderThickness="3"
+              CornerRadius="0" />
+    </Panel>
+
+    <!-- ═══════════ DIALOG OVERLAY (Android / SingleView) ═══════════════ -->
+    <!--
+      On mobile platforms where we cannot open a real Window,
+      NoteEditView is shown here as a full-screen overlay.
+      MainView.axaml.cs toggles IsVisible and sets DialogContent.
+    -->
     <Panel Name="DialogOverlay"
            Grid.Row="0" Grid.RowSpan="2"
-           Background="#80000000"
-           IsVisible="False">
-      <Border Background="{DynamicResource SystemRegionBrush}"
-              CornerRadius="12"
+           Background="#88000000"
+           IsVisible="False"
+           ZIndex="1000">
+      <Border Background="{DynamicResource AppSurface}"
+              CornerRadius="14"
               Margin="16"
               HorizontalAlignment="Stretch"
               VerticalAlignment="Stretch"
-              BoxShadow="0 4 20 0 #40000000">
+              BoxShadow="0 6 32 0 #50000000">
         <ContentControl Name="DialogContent" />
       </Border>
     </Panel>

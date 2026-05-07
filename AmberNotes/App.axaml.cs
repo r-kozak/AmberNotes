@@ -18,6 +18,9 @@ namespace AmberNotes
 
         public override void OnFrameworkInitializationCompleted()
         {
+            // ── Theme: apply default AmberNoir immediately ────────────────────
+            Services.ThemeService.Instance.Initialize();
+
             // ── Infrastructure ────────────────────────────────────────────────
             var dbPath    = GetDatabasePath();
             var dbService = new DatabaseService(dbPath);

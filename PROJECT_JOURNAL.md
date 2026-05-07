@@ -68,8 +68,8 @@ MainWindow / AppView
 - [x] Крок 14: Логіка ініціалізації: перший запуск → `CryptoService.IsFirstRun=true` → показ Confirm-поля + створення сховища; наступні запуски → `IsFirstRun=false` → розблокування. Міграційний guard v0.2→v0.3. `dotnet build` **succeeded** ✅ (0 помилок, 0 попереджень).
 
 **Поточна версія:** v0.4: Writing Experience & Modes 
-- [ ] **Крок 15: Themes.** Створення ResourceDictionary для "Amber Noir" та "Saffron Linen". Налаштування DynamicResource для всіх компонентів.
-- [ ] **Крок 16: ModeSwitcher.** Реалізація сервісу перемикання режимів та UI-контрола в Header.
+- [x] **Крок 15: Themes.** Створення ResourceDictionary для "Amber Noir" та "Saffron Linen". Налаштування DynamicResource для всіх компонентів.
+- [x] **Крок 16: ModeSwitcher.** Реалізація сервісу перемикання режимів та UI-контрола в Header.
 - [ ] **Крок 17: Security Bridge.** Оновлення логіки входу: запит пароля лише для Приватного режиму. Розділення потоків даних Public/Private.
 - [ ] **Крок 18: Markdown Core.** Підключення Markdig. Створення NoteEditorView з підтримкою Markdown-розмітки.
 - [ ] **Крок 19: Single-Window Navigation.** Впровадження ViewLocator або Router для зміни екранів (List <-> Editor) без нових вікон.
@@ -115,4 +115,22 @@ MainWindow / AppView
 - **Зроблено (Крок 14):** Логіка ініціалізації повністю реалізована. Перший запуск — `CryptoService.IsFirstRun=true`, сіль ще не існує → LoginView показує Confirm-поле + кнопку «Створити сховище» → PBKDF2 генерує сіль + ключ → `TryUnlockWithKey()` + `Initialize()` → `SwitchToMain()`. Наступні запуски — сіль існує → `IsFirstRun=false` → тільки поле пароля + кнопка «Розблокувати» → PBKDF2 відтворює той самий ключ → верифікація `SELECT count(*) FROM sqlite_master`. Помилковий пароль → `SqliteException` → поля очищуються. `LoginViewModel` хелпери: `HasError`, `IsNotBusy`, `ButtonText`, `SubtitleText` — через `partial void On*Changed`.
 - **Результат:** `dotnet build` — **succeeded** ✅ (0 помилок, 0 попереджень)
 - **Статус v0.3:** ЗАВЕРШЕНО ✅
-- **Наступний крок:** v0.4 — Markdown-редактор, публічний/приватний режим, світла/темна тема.
+
+### 2026-05-07 — Кроки 15-16: Themes & ModeSwitcher (v0.4 початок)
+
+- **Зроблено (Крок 15):** Глобальна система тем на базі `DynamicResource`.
+  - `AmberNotes/Styles/Themes/AmberNoir.axaml` — темна тема (#1A1A1B фон, #FFBF00 акцент). Визначає 15 семантичних ресурсів-пензлів: `AppBackground`, `AppSurface`, `AppSurfaceVariant`, `AppToolbar`, `AppOnBackground`, `AppOnSurface`, `AppSubtext`, `AppPrimary`, `AppOnPrimary`, `AppSecondary`, `AppBorder`, `AppDivider`, `AppPrivateGlow`, `AppPrivateBadge`, `AppPublicBadge`.
+  - `AmberNotes/Styles/Themes/SaffronLinen.axaml` — світла тема (#F4F1EA фон, #D97706 акцент). Ті ж самі ключі — гарантує сумісність між темами.
+  - `ThemeService.cs` (Singleton) — `SetTheme()` + `ToggleTheme()` + `Initialize()`. При перемиканні: видаляє старий `ResourceInclude` з `Application.Resources.MergedDictionaries`, додає новий, оновлює `app.RequestedThemeVariant` (Dark/Light) для FluentTheme. Працює на Desktop і Android однаково через `avares://` URIs.
+  - `App.axaml` оновлено: `RequestedThemeVariant="Dark"`, `<ResourceInclude Source="avares://AmberNotes/Styles/Themes/AmberNoir.axaml"/>` як дефолт.
+  - `App.axaml.cs` оновлено: `ThemeService.Instance.Initialize()` викликається першим у `OnFrameworkInitializationCompleted`.
+  - `AmberNotes.csproj` оновлено: `<AvaloniaResource Include="Styles\**" />`.
+  - `MainView.axaml` повністю переписано: всі кольори замінені на `DynamicResource` (AppBackground, AppToolbar, AppBorder, AppSubtext, AppSurface, AppSurfaceVariant, AppOnSurface, AppPrimary, AppOnPrimary, AppSecondary).
+
+- **Зроблено (Крок 16):** ModeSwitcher — Public/Private режим.
+  - `ModeService.cs` (Singleton) — `SetMode()`, `ToggleMode()`, подія `ModeChanged`. Стан: Public (за замовчуванням) / Private.
+  - `MainViewModel.cs` оновлено: `IsPrivateMode` + `IsPublicMode` (inverse), `IsDarkTheme`, `ThemeToggleIcon`, `ThemeToggleTip`; команди `SetPublicModeCommand`, `SetPrivateModeCommand`, `ToggleThemeCommand`; підписка на singleton-події; `LoadNotes()` фільтрує нотатки за типом (Public/Private відповідно до режиму).
+  - `MainView.axaml` Header: 3-колонковий Grid — [CRUD кнопки | Segmented Mode Switcher | Theme Toggle]. Mode Switcher: активний стан — статичний `Border` з кольором акценту, неактивний — `Button` з прозорим фоном. Theme Toggle: кнопка 🌙/☀ з тултипом.
+  - **Visual Cue (Private mode):** Напівпрозорий `Panel` з `AppPrivateGlow` `Border` (BorderThickness=3) покриває весь view (`ZIndex=500`, `IsHitTestVisible=False`) коли `IsPrivateMode=true`.
+- **Результат:** `dotnet build` — **succeeded** ✅ (0 помилок, Desktop + Android)
+- **Наступний крок:** Крок 17 — Security Bridge (password re-prompt для Private mode, відокремлена public.db).
