@@ -1,0 +1,2035 @@
+
+
+--- FILE: .\AmberNotes.slnx ---
+
+<Solution>
+  <Project Path="AmberNotes.Android/AmberNotes.Android.csproj">
+    <Deploy />
+  </Project>
+  <Project Path="AmberNotes.Desktop/AmberNotes.Desktop.csproj" />
+  <Project Path="AmberNotes/AmberNotes.csproj" />
+</Solution>
+
+
+
+--- FILE: .\PROJECT_JOURNAL.md ---
+
+# Amber Notes - Project Journal
+
+## Філософія проєкту (Vision)
+Amber Notes — це кросплатформний інструмент для ведення нотаток, що поєднує швидкі "нотатки-нагадування" та глибокі "теплі" записи щоденника. 
+Основна філософія: приватність, затишок та надійність (у дусі стоїцизму). Жодних виділених серверів, жодного збору даних.
+
+## Технічні обмеження та Стек
+- **Платформи:** Desktop (Windows) та Mobile (Android).
+- **Стек:** .NET + Avalonia UI (C#).
+- **Архітектура:** MVVM (Model-View-ViewModel). Усі спільні компоненти та бізнес-логіка знаходяться в `AmberNotes.Core`. Застосунок реалізовується, як Single-window application.
+- **База даних:** Локальна SQLite з шифруванням AES-256 через SQLCipher (активовано у v0.3).
+- **Синхронізація:** У майбутньому — зашифровані бекапи/синхронізація через особисті хмари (Google Drive App Data Folder).
+
+## Архітектура безпеки (v0.3+)
+
+### Схема шифрування
+```
+Майстер-пароль (у пам'яті)
+       │
+       ▼  PBKDF2-SHA256 (256,000 ітерацій)
+       │   Salt: ambernotes.salt (256 біт, генерується при першому запуску)
+       │
+       ▼
+  HEX-ключ (256 біт) ──► PRAGMA key = "x'hexKey'" ──► SQLCipher AES-256
+       │
+       ▼
+  ambernotes.db (зашифрована БД)
+```
+
+### Файли сховища
+| Файл | Опис | Шифрування |
+|------|------|------------|
+| `ambernotes.db` | База даних SQLite (SQLCipher AES-256) | ✅ Так |
+| `ambernotes.salt` | 32-байтна криптографічна сіль | ❌ Ні (потрібна до відкриття БД) |
+
+**Важлива примітка:** Сіль навмисно зберігається у відкритому вигляді — вона не є секретом. Безпека гарантується майстер-паролем + PBKDF2 (256k ітерацій). Без пароля сіль марна.
+
+### Навігаційна архітектура
+```
+AppViewModel.CurrentViewModel
+       ├── LoginViewModel  →  LoginView   (App Lock, крок 13)
+       └── MainViewModel   →  MainView    (Dashboard)
+
+MainWindow / AppView
+  └── ContentControl Content="{Binding CurrentViewModel}"
+        └── ViewLocator (Application.DataTemplates) — автоматичне мапування VM → View
+```
+
+## Поточний статус (Roadmap)
+**Реалізована версія:** v0.1: Skeleton & MVVM
+- [x] Крок 1: Створення рішення (Core, Desktop, Android).
+- [x] Крок 2: Створення PROJECT_JOURNAL.md.
+- [x] Крок 3: Впровадження .cursorrules для ШІ.
+- [x] Крок 4: Базовий UI (Головне вікно з кнопкою "Створити" і тестовим записом).
+
+**Реалізована версія:** v0.2: SQLite Local (Unencrypted)
+- [x] Крок 5: Підключення Microsoft.Data.Sqlite.
+- [x] Крок 6: Створення таблиці Books (Id, Name, Default [true/false]).
+- [x] Крок 7: Створення таблиці Notes (Id, Title, Content, NoteDateTime, CreatedAt, UpdatedAt, Type: Public/Private). Налаштування зв'язків між таблицями Books та Notes, як One-to-Many.
+- [x] Крок 8: Реалізація відображення вікна редагування нотатки з полями (Заголовок, Текст, Книга, Тип, Дата запису).
+- [x] Крок 9: Реалізація відображення списку створених нотаток та базового CRUD (створення, читання, редагування, видалення).
+
+**Реалізована версія:** v0.3: The Vault (SQLCipher) ✅
+- [x] Крок 10: Заміна інфраструктури БД: `Microsoft.Data.Sqlite` → `Microsoft.Data.Sqlite.Core` + `SQLitePCLRaw.bundle_e_sqlcipher` (AES-256). `Batteries_V2.Init()` додано до `Program.cs` (Desktop) та `Application.OnCreate()` (Android).
+- [x] Крок 11: Криптографічний сервіс: `CryptoService.cs` — PBKDF2-SHA256 (256,000 ітерацій, 256-біт ключ, 256-біт сіль). `DatabaseService.cs` оновлено: `TryUnlockWithKey()`, `PRAGMA key = "x'hexKey'"`, `DeleteDatabaseFile()` (міграція v0.2).
+- [x] Крок 12: `LoginViewModel` (CommunityToolkit.Mvvm): обробка першого запуску/розблокування, PBKDF2 у фоні (`Task.Run`), очищення пароля з пам'яті. `AppViewModel` з `CurrentViewModel` для навігації. `AppView.axaml` (мобільний root). `MainWindow.axaml` оновлено на `ContentControl`.
+- [x] Крок 13: `LoginView.axaml` — повноекранний екран авторизації у бурштинових тонах (#2B1B10 фон, #FFBF00 акцент). Поле пароля (PasswordChar), поле підтвердження (IsVisible=IsFirstRun), панель помилок, кнопка «Створити сховище»/«Розблокувати», ProgressBar під час PBKDF2.
+- [x] Крок 14: Логіка ініціалізації: перший запуск → `CryptoService.IsFirstRun=true` → показ Confirm-поля + створення сховища; наступні запуски → `IsFirstRun=false` → розблокування. Міграційний guard v0.2→v0.3. `dotnet build` **succeeded** ✅ (0 помилок, 0 попереджень).
+
+## Журнал сесій (Session Log)
+### 2026-05-03 — Ініціалізація проєкту
+- **Зроблено:** Створено структуру проєкту (.NET + Avalonia UI). Додано `PROJECT_JOURNAL.md` для збереження контексту ШІ.
+- **Зроблено:** Налаштовано правила для Cursor AI (`.cursorrules`) та створено базовий інтерфейс з тестовими даними.
+
+### 2026-05-03 — Крок 4: базовий UI
+- **Зроблено:** `MainViewModel`: `Greeting` з `[ObservableProperty]`, команда `CreateNote` з `[RelayCommand]`.
+- **Зроблено:** `MainView.axaml`: центрований `StackPanel`, `TextBlock` + кнопка.
+
+### 2026-05-04 — Кроки 5-7: Інфраструктура SQLite БД
+- **Зроблено (Крок 5):** Підключено `Microsoft.Data.Sqlite` v9.0.4 через Central Package Management (`Directory.Packages.props`). Пакет додано до `AmberNotes.csproj`.
+- **Зроблено (Крок 6):** Створено модель `Book` (`Models/Book.cs`) з полями `Id`, `Name`, `IsDefault`. `DatabaseService` створює таблицю `Books` та сідить "My Notes" (IsDefault=1) при першому запуску.
+- **Зроблено (Крок 7):** Створено enum `NoteType` (Public/Private) та модель `Note` (`Models/Note.cs`) з полями `Id`, `Title`, `Content`, `NoteDateTime`, `CreatedAt`, `UpdatedAt`, `Type`, `BookId` (FK). Таблиця `Notes` з `FOREIGN KEY (BookId) REFERENCES Books(Id) ON DELETE CASCADE`.
+- **Зроблено:** `DatabaseService` (`Services/DatabaseService.cs`) — ініціалізація БД у транзакції, платформо-незалежний шлях (Desktop → `%LOCALAPPDATA%\AmberNotes\ambernotes.db`).
+- **Результат:** `dotnet build` — **succeeded** ✅
+
+### 2026-05-04 — Кроки 8-9: UI та CRUD
+- **Зроблено (Крок 8):** `NoteEditViewModel` + `NoteEditView.axaml` — вікно редагування/створення нотатки з полями: Заголовок, Текст, Книга (ComboBox), Тип (ComboBox: Public/Private), Дата запису (CalendarDatePicker). Кнопки «Зберегти» / «Скасувати».
+- **Зроблено (Крок 9):** `NoteRepository` (`Services/NoteRepository.cs`) — повний CRUD (GetAll, GetById, Create, Update, Delete) з JOIN на Books. `BookRepository` (`Services/BookRepository.cs`) — GetAll, GetDefault. `MainViewModel` оновлено: `ObservableCollection<Note>`, команди `CreateNote`, `EditNote`, `DeleteNote` (з CanExecute). `MainView.axaml` оновлено: тулбар з кнопками, `ListBox` зі списком нотаток (заголовок, превʼю тексту, дата, бейдж типу), empty-state повідомлення.
+- **Зроблено:** `App.axaml.cs` — передає `NoteRepository` та `BookRepository` у `MainViewModel` через конструктор.
+- **Результат:** `dotnet build` — **succeeded** ✅ (0 помилок)
+
+### 2026-05-04 — Виправлення крашу на Android
+- **Проблема:** Android-версія падала з `NotSupportedException` при спробі створити `Window` (NoteEditView).
+- **Зроблено:** `NoteEditView` перетворено з `Window` на `UserControl`.
+- **Зроблено:** В `MainView.axaml` додано `DialogOverlay` (Panel + Border + ContentControl) для відображення діалогів на мобільних платформах.
+- **Зроблено:** В `MainView.axaml.cs` реалізовано адаптивну логіку: на Desktop створюється динамічне `Window` для `NoteEditView`, на Android використовується overlay.
+- **Результат:** Додаток стабільно працює на обох платформах. ✅
+
+### 2026-05-06 — Кроки 10-12: The Vault (SQLCipher) — Інфраструктура безпеки
+- **Зроблено (Крок 10):** Замінено `Microsoft.Data.Sqlite` → `Microsoft.Data.Sqlite.Core` (shared) + `SQLitePCLRaw.bundle_e_sqlcipher` v2.1.10 (Desktop + Android entry points). `SQLitePCL.Batteries_V2.Init()` викликається в `Program.Main()` (Desktop) та `Application.OnCreate()` (Android) перед будь-яким SQLite-кодом.
+- **Зроблено (Крок 11):** `CryptoService.cs` — PBKDF2-SHA256 (256,000 ітерацій, 256-біт ключ/сіль). Сіль зберігається у `ambernotes.salt` поруч з БД. `DatabaseService.cs` повністю переписано: `TryUnlockWithKey(hexKey)` відкриває з'єднання і застосовує `PRAGMA key = "x'hexKey'"` як перший запит; `Initialize()` тепер вимагає попереднього `TryUnlockWithKey()`; `DeleteDatabaseFile()` для міграції v0.2→v0.3.
+- **Зроблено (Крок 12):** `LoginViewModel.cs` — обробляє перший запуск (IsFirstRun) та авторизацію. PBKDF2 виконується у `Task.Run` (не блокує UI). Пароль очищується з пам'яті у `finally`. Міграційний guard: якщо перший запуск + стара незашифрована БД існує — видаляємо її. `AppViewModel.cs` — `CurrentViewModel` (LoginViewModel → MainViewModel) для ContentControl-навігації. `AppView.axaml` — мобільний root-view. `MainWindow.axaml` оновлено: `ContentControl Content="{Binding CurrentViewModel}"`. `App.axaml.cs` оновлено: використовує `AppViewModel` + `LoginViewModel`; `SwitchToMain()` викликається після `LoginSucceeded`.
+- **Результат:** `dotnet build` — **succeeded** ✅ (0 помилок, 0 попереджень)
+
+### 2026-05-06 — Кроки 13-14: The Vault (SQLCipher) — UI та завершення
+- **Зроблено (Крок 13):** `LoginView.axaml` + `LoginView.axaml.cs` — повноекранний екран авторизації у бурштинових тонах. Деталі: фон `#2B1B10`, картка `#3D2514`, акцент `#FFBF00`. Поле пароля (`PasswordChar="•"`, `PlaceholderText`), поле підтвердження (`IsVisible="{Binding IsFirstRun}"`), панель помилок з іконкою ⚠ (`IsVisible="{Binding HasError}"`), кнопка зі стилями hover/pressed/disabled, `ProgressBar IsIndeterminate=True` під час PBKDF2, підказка з попередженням при першому запуску. `KeyBinding Gesture="Enter"` → `SubmitCommand`. Автофокус поля пароля через `AttachedToVisualTree`. Локальні стилі TextBox (amber-tinted, border focus / hover).
+- **Зроблено (Крок 14):** Логіка ініціалізації повністю реалізована. Перший запуск — `CryptoService.IsFirstRun=true`, сіль ще не існує → LoginView показує Confirm-поле + кнопку «Створити сховище» → PBKDF2 генерує сіль + ключ → `TryUnlockWithKey()` + `Initialize()` → `SwitchToMain()`. Наступні запуски — сіль існує → `IsFirstRun=false` → тільки поле пароля + кнопка «Розблокувати» → PBKDF2 відтворює той самий ключ → верифікація `SELECT count(*) FROM sqlite_master`. Помилковий пароль → `SqliteException` → поля очищуються. `LoginViewModel` хелпери: `HasError`, `IsNotBusy`, `ButtonText`, `SubtitleText` — через `partial void On*Changed`.
+- **Результат:** `dotnet build` — **succeeded** ✅ (0 помилок, 0 попереджень)
+- **Статус v0.3:** ЗАВЕРШЕНО ✅
+- **Наступний крок:** v0.4 — Markdown-редактор, публічний/приватний режим, світла/темна тема.
+
+
+
+--- FILE: .clinerules\workflows\Journal Update.md ---
+
+Коли я прошу підсумувати сесію, автоматично зчитуй останні зміни та оновлюй розділ 'Session Log' у PROJECT_JOURNAL.md
+
+
+
+--- FILE: .\AmberNotes\AmberNotes.csproj ---
+
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Avalonia.Fonts.Inter" />
+    <PackageReference Include="AvaloniaUI.DiagnosticsSupport">
+      <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
+      <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" />
+  </ItemGroup>
+</Project>
+
+
+
+--- FILE: .\AmberNotes\App.axaml ---
+
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:AmberNotes"
+             x:Class="AmberNotes.App"
+             RequestedThemeVariant="Default">
+             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+
+    <Application.DataTemplates>
+        <local:ViewLocator/>
+    </Application.DataTemplates>
+
+    <Application.Styles>
+        <FluentTheme />
+    </Application.Styles>
+</Application>
+
+
+--- FILE: .\AmberNotes\App.axaml.cs ---
+
+using System;
+using System.IO;
+using AmberNotes.Services;
+using AmberNotes.ViewModels;
+using AmberNotes.Views;
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Markup.Xaml;
+
+namespace AmberNotes
+{
+    public partial class App : Application
+    {
+        public override void Initialize()
+        {
+            AvaloniaXamlLoader.Load(this);
+        }
+
+        public override void OnFrameworkInitializationCompleted()
+        {
+            // ── Infrastructure ────────────────────────────────────────────────
+            var dbPath    = GetDatabasePath();
+            var dbService = new DatabaseService(dbPath);
+            var cryptoSvc = new CryptoService(Path.GetDirectoryName(dbPath)!);
+
+            // ── App-level navigation ──────────────────────────────────────────
+            var loginVm = new LoginViewModel(cryptoSvc, dbService);
+            var appVm   = new AppViewModel(loginVm);
+
+            // After successful login: build repositories and switch to main view
+            loginVm.LoginSucceeded += () =>
+            {
+                var noteRepo = new NoteRepository(dbService);
+                var bookRepo = new BookRepository(dbService);
+                appVm.SwitchToMain(noteRepo, bookRepo);
+            };
+            // ─────────────────────────────────────────────────────────────────
+
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                // Desktop: AppViewModel drives MainWindow via ContentControl + ViewLocator
+                desktop.MainWindow = new MainWindow
+                {
+                    DataContext = appVm
+                };
+            }
+            else if (ApplicationLifetime is IActivityApplicationLifetime activityLifetime)
+            {
+                // Android: AppView is the mobile root (mirrors MainWindow structure)
+                activityLifetime.MainViewFactory = () => new AppView
+                {
+                    DataContext = appVm
+                };
+            }
+            else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
+            {
+                singleViewPlatform.MainView = new AppView
+                {
+                    DataContext = appVm
+                };
+            }
+
+            base.OnFrameworkInitializationCompleted();
+        }
+
+        /// <summary>
+        /// Returns the platform-appropriate path for the SQLite database file.
+        ///   Desktop  → %LOCALAPPDATA%\AmberNotes\ambernotes.db
+        ///   Android  → /data/data/{package}/files/ambernotes.db  (Personal folder)
+        /// </summary>
+        private static string GetDatabasePath()
+        {
+            var folder = Environment.GetFolderPath(
+                OperatingSystem.IsAndroid()
+                    ? Environment.SpecialFolder.Personal
+                    : Environment.SpecialFolder.LocalApplicationData);
+
+            return Path.Combine(folder, "AmberNotes", "ambernotes.db");
+        }
+    }
+}
+
+
+
+--- FILE: .\AmberNotes\ViewLocator.cs ---
+
+using AmberNotes.ViewModels;
+using Avalonia.Controls;
+using Avalonia.Controls.Templates;
+using System;
+using System.Diagnostics.CodeAnalysis;
+
+namespace AmberNotes
+{
+    /// <summary>
+    /// Given a view model, returns the corresponding view if possible.
+    /// </summary>
+    [RequiresUnreferencedCode(
+        "Default implementation of ViewLocator involves reflection which may be trimmed away.",
+        Url = "https://docs.avaloniaui.net/docs/concepts/view-locator")]
+    public class ViewLocator : IDataTemplate
+    {
+        public Control? Build(object? param)
+        {
+            if (param is null)
+                return null;
+
+            var name = param.GetType().FullName!.Replace("ViewModel", "View", StringComparison.Ordinal);
+            var type = Type.GetType(name);
+
+            if (type != null)
+            {
+                return (Control)Activator.CreateInstance(type)!;
+            }
+
+            return new TextBlock { Text = "Not Found: " + name };
+        }
+
+        public bool Match(object? data)
+        {
+            return data is ViewModelBase;
+        }
+    }
+}
+
+
+--- FILE: .\AmberNotes\Models\Book.cs ---
+
+namespace AmberNotes.Models;
+
+/// <summary>
+/// Represents a notebook (book) that groups notes together.
+/// Maps to the "Books" table in SQLite.
+/// </summary>
+public class Book
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Indicates whether this book is the default one.
+    /// Only one book should have IsDefault = true at a time.
+    /// </summary>
+    public bool IsDefault { get; set; }
+}
+
+
+
+--- FILE: .\AmberNotes\Models\Note.cs ---
+
+using System;
+
+namespace AmberNotes.Models;
+
+/// <summary>
+/// Represents a single note entry.
+/// Maps to the "Notes" table in SQLite.
+/// Has a Many-to-One relationship with <see cref="Book"/>.
+/// </summary>
+public class Note
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
+
+    /// <summary>The user-defined date/time of the note (e.g. diary entry date).</summary>
+    public DateTime NoteDateTime { get; set; }
+
+    /// <summary>Timestamp when the record was first created in the DB.</summary>
+    public DateTime CreatedAt { get; set; }
+
+    /// <summary>Timestamp when the record was last updated in the DB.</summary>
+    public DateTime UpdatedAt { get; set; }
+
+    /// <summary>Public = accessible to everyone; Private = secure, requires authentication.</summary>
+    public NoteType Type { get; set; } = NoteType.Public;
+
+    // ── Foreign key ──────────────────────────────────────────────────────────
+    /// <summary>FK → Books.Id</summary>
+    public int BookId { get; set; }
+
+    // ── Navigation property (not persisted, populated manually) ──────────────
+    public Book? Book { get; set; }
+}
+
+
+
+--- FILE: .\AmberNotes\Models\NoteType.cs ---
+
+namespace AmberNotes.Models;
+
+/// <summary>
+/// Defines the type (state) of a note.
+/// </summary>
+public enum NoteType
+{
+    /// <summary>Accessible to everyone; no password required.</summary>
+    Public,
+    /// <summary>Secure; requires authentication to view list of private notes.</summary>
+    Private
+}
+
+
+
+--- FILE: .\AmberNotes\Services\BookRepository.cs ---
+
+using System.Collections.Generic;
+using AmberNotes.Models;
+
+namespace AmberNotes.Services;
+
+/// <summary>
+/// Provides read operations for the Books table.
+/// </summary>
+public class BookRepository
+{
+    private readonly DatabaseService _db;
+
+    public BookRepository(DatabaseService db) => _db = db;
+
+    /// <summary>Returns all books ordered by name.</summary>
+    public List<Book> GetAll()
+    {
+        var books = new List<Book>();
+        using var conn = _db.OpenConnection();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT Id, Name, IsDefault FROM Books ORDER BY Name;";
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            books.Add(new Book
+            {
+                Id        = reader.GetInt32(0),
+                Name      = reader.GetString(1),
+                IsDefault = reader.GetInt32(2) == 1
+            });
+        }
+        return books;
+    }
+
+    /// <summary>Returns the default book, or the first book if none is marked default.</summary>
+    public Book? GetDefault()
+    {
+        using var conn = _db.OpenConnection();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            SELECT Id, Name, IsDefault FROM Books
+            ORDER BY IsDefault DESC, Id ASC
+            LIMIT 1;
+            """;
+        using var reader = cmd.ExecuteReader();
+        if (!reader.Read()) return null;
+        return new Book
+        {
+            Id        = reader.GetInt32(0),
+            Name      = reader.GetString(1),
+            IsDefault = reader.GetInt32(2) == 1
+        };
+    }
+}
+
+
+
+--- FILE: .\AmberNotes\Services\CryptoService.cs ---
+
+using System;
+using System.IO;
+using System.Security.Cryptography;
+
+namespace AmberNotes.Services;
+
+/// <summary>
+/// Handles cryptographic operations for AmberNotes:
+///   - PBKDF2-SHA256 key derivation (256,000 iterations, 256-bit output key)
+///   - Salt lifecycle (generated once, stored as a plain binary file, NEVER inside the encrypted DB)
+///
+/// Salt file location: same directory as the database → ambernotes.salt
+/// SECURITY: The derived key is returned as a hex string and must never be logged.
+/// </summary>
+public class CryptoService
+{
+    private const int Iterations    = 256_000;
+    private const int KeySizeBytes  = 32;   // 256 bits
+    private const int SaltSizeBytes = 32;   // 256 bits — cryptographically random
+
+    private readonly string _saltFilePath;
+
+    public CryptoService(string dataDirectory)
+    {
+        _saltFilePath = Path.Combine(dataDirectory, "ambernotes.salt");
+    }
+
+    /// <summary>
+    /// Returns true when no salt file exists yet, meaning the vault has never been set up.
+    /// </summary>
+    public bool IsFirstRun => !File.Exists(_saltFilePath);
+
+    /// <summary>
+    /// Derives a 256-bit encryption key from <paramref name="masterPassword"/> using PBKDF2-SHA256.
+    /// On the first call (no salt file) a new random salt is generated and persisted.
+    /// Subsequent calls load the existing salt to reproduce the same key for the same password.
+    ///
+    /// SECURITY: The returned hex string is the raw AES key — never store or log it.
+    /// </summary>
+    public string DeriveKey(string masterPassword)
+    {
+        var salt = LoadOrCreateSalt();
+
+        // Rfc2898DeriveBytes.Pbkdf2 — modern static API (.NET 6+, no deprecation warning)
+        var keyBytes = Rfc2898DeriveBytes.Pbkdf2(
+            masterPassword,
+            salt,
+            Iterations,
+            HashAlgorithmName.SHA256,
+            KeySizeBytes);
+
+        // Return as lowercase hex — passed directly to SQLCipher via PRAGMA key = "x'...'"
+        return Convert.ToHexString(keyBytes).ToLowerInvariant();
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────────────
+
+    private byte[] LoadOrCreateSalt()
+    {
+        if (File.Exists(_saltFilePath))
+            return File.ReadAllBytes(_saltFilePath);
+
+        // First run: create directory and persist a new cryptographically-random salt
+        var directory = Path.GetDirectoryName(_saltFilePath);
+        if (!string.IsNullOrEmpty(directory))
+            Directory.CreateDirectory(directory);
+
+        var salt = RandomNumberGenerator.GetBytes(SaltSizeBytes);
+        File.WriteAllBytes(_saltFilePath, salt);
+        return salt;
+    }
+}
+
+
+
+--- FILE: .\AmberNotes\Services\DatabaseService.cs ---
+
+using System;
+using System.IO;
+using Microsoft.Data.Sqlite;
+
+namespace AmberNotes.Services;
+
+/// <summary>
+/// Manages the SQLCipher-encrypted database lifecycle.
+///
+/// Usage flow:
+///   1. Construct with the database file path.
+///   2. Call TryUnlockWithKey(hexKey) — derived externally via CryptoService (PBKDF2).
+///      Returns true on success; false if the key is wrong or the file is corrupt.
+///   3. Call Initialize() once after a successful unlock (safe to call every startup).
+///   4. Use OpenConnection() for all subsequent data access.
+///
+/// Encryption: AES-256 via SQLCipher.
+///   All connections apply  PRAGMA key = "x'hexKey'"  immediately on open.
+///   The raw hex key bypasses SQLCipher's own PBKDF2 because we run PBKDF2 ourselves
+///   (256,000 iterations, SHA-256) so the key material already has the required entropy.
+///
+/// Database file location:
+///   Desktop → %LOCALAPPDATA%\AmberNotes\ambernotes.db
+///   Android → app-private storage (path injected via constructor)
+/// </summary>
+public class DatabaseService
+{
+    private readonly string _dbPath;
+
+    // 64-char lowercase hex — never logged, cleared on unlock failure
+    private string? _hexKey;
+
+    public DatabaseService(string dbPath)
+    {
+        _dbPath = dbPath;
+    }
+
+    /// <summary>True when the database file does not yet exist (first run).</summary>
+    public bool IsNewDatabase => !File.Exists(_dbPath);
+
+    /// <summary>
+    /// Attempts to open the database with the provided 256-bit hex key.
+    ///
+    /// Returns true  — key accepted; the key is stored for subsequent OpenConnection() calls.
+    /// Returns false — key rejected (wrong password, or file is not a SQLCipher database).
+    ///
+    /// Migration note: if an unencrypted v0.2 database is present, SQLCipher will fail to
+    /// read it and this method returns false. The caller (LoginViewModel) handles migration
+    /// by deleting the old file before re-calling this method.
+    ///
+    /// SECURITY: hexKey is never logged.
+    /// </summary>
+    public bool TryUnlockWithKey(string hexKey)
+    {
+        try
+        {
+            using var conn = OpenConnectionInternal(hexKey);
+
+            // Probe: if the key is correct SQLCipher can read the schema page
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT count(*) FROM sqlite_master;";
+            cmd.ExecuteScalar();
+
+            _hexKey = hexKey;
+            return true;
+        }
+        catch (SqliteException)
+        {
+            // Wrong key or corrupt/unencrypted file
+            _hexKey = null;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Opens a new authenticated connection.
+    /// The caller is responsible for disposing it.
+    /// Throws <see cref="InvalidOperationException"/> if TryUnlockWithKey() was not called first.
+    /// </summary>
+    public SqliteConnection OpenConnection()
+    {
+        if (_hexKey is null)
+            throw new InvalidOperationException(
+                "Database key not set. Call TryUnlockWithKey() before opening connections.");
+
+        return OpenConnectionInternal(_hexKey);
+    }
+
+    /// <summary>
+    /// Ensures the database directory and all required tables exist.
+    /// Must be called after a successful TryUnlockWithKey().
+    /// Safe to call on every app startup (uses CREATE TABLE IF NOT EXISTS).
+    /// Also seeds the default "My Notes" book on first run.
+    /// </summary>
+    public void Initialize()
+    {
+        var directory = Path.GetDirectoryName(_dbPath);
+        if (!string.IsNullOrEmpty(directory))
+            Directory.CreateDirectory(directory);
+
+        using var connection = OpenConnection();
+        using var transaction = connection.BeginTransaction();
+
+        CreateBooksTable(connection, transaction);
+        CreateNotesTable(connection, transaction);
+        SeedDefaultBook(connection, transaction);
+
+        transaction.Commit();
+    }
+
+    /// <summary>
+    /// Deletes the database file from disk.
+    /// Used for the v0.2 → v0.3 migration: removes the legacy unencrypted database
+    /// so a fresh encrypted vault can be created on the same path.
+    /// </summary>
+    public void DeleteDatabaseFile()
+    {
+        if (File.Exists(_dbPath))
+            File.Delete(_dbPath);
+    }
+
+    // ── Internal helpers ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Opens a connection and immediately applies the SQLCipher key as raw hex bytes.
+    /// Using the  x'...'  hex syntax tells SQLCipher to use our pre-derived key directly,
+    /// skipping SQLCipher's own built-in PBKDF2 (we already did PBKDF2 externally).
+    /// </summary>
+    private SqliteConnection OpenConnectionInternal(string hexKey)
+    {
+        var connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = _dbPath,
+            Mode       = SqliteOpenMode.ReadWriteCreate,
+        }.ToString();
+
+        var connection = new SqliteConnection(connectionString);
+        connection.Open();
+
+        // MUST be the very first statement after Open()
+        using var keyCmd = connection.CreateCommand();
+        keyCmd.CommandText = $"PRAGMA key = \"x'{hexKey}'\";";
+        keyCmd.ExecuteNonQuery();
+
+        return connection;
+    }
+
+    // ── Schema ────────────────────────────────────────────────────────────────
+
+    private static void CreateBooksTable(SqliteConnection connection, SqliteTransaction transaction)
+    {
+        const string sql = """
+            CREATE TABLE IF NOT EXISTS Books (
+                Id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                Name      TEXT    NOT NULL,
+                IsDefault INTEGER NOT NULL DEFAULT 0   -- 0 = false, 1 = true
+            );
+            """;
+
+        using var cmd = connection.CreateCommand();
+        cmd.Transaction  = transaction;
+        cmd.CommandText  = sql;
+        cmd.ExecuteNonQuery();
+    }
+
+    private static void CreateNotesTable(SqliteConnection connection, SqliteTransaction transaction)
+    {
+        const string sql = """
+            CREATE TABLE IF NOT EXISTS Notes (
+                Id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                Title        TEXT    NOT NULL DEFAULT '',
+                Content      TEXT    NOT NULL DEFAULT '',
+                NoteDateTime TEXT    NOT NULL,           -- ISO-8601 UTC
+                CreatedAt    TEXT    NOT NULL,           -- ISO-8601 UTC
+                UpdatedAt    TEXT    NOT NULL,           -- ISO-8601 UTC
+                Type         TEXT    NOT NULL DEFAULT 'Open',  -- 'Open' | 'Closed'
+                BookId       INTEGER NOT NULL,
+                FOREIGN KEY (BookId) REFERENCES Books(Id) ON DELETE CASCADE
+            );
+            """;
+
+        using var cmd = connection.CreateCommand();
+        cmd.Transaction  = transaction;
+        cmd.CommandText  = sql;
+        cmd.ExecuteNonQuery();
+    }
+
+    // ── Seed ──────────────────────────────────────────────────────────────────
+
+    private static void SeedDefaultBook(SqliteConnection connection, SqliteTransaction transaction)
+    {
+        using var countCmd = connection.CreateCommand();
+        countCmd.Transaction  = transaction;
+        countCmd.CommandText  = "SELECT COUNT(*) FROM Books;";
+        var count = (long)(countCmd.ExecuteScalar() ?? 0L);
+
+        if (count > 0) return;
+
+        using var insertCmd = connection.CreateCommand();
+        insertCmd.Transaction  = transaction;
+        insertCmd.CommandText  = "INSERT INTO Books (Name, IsDefault) VALUES ('My Notes', 1);";
+        insertCmd.ExecuteNonQuery();
+    }
+}
+
+
+
+--- FILE: .\AmberNotes\Services\NoteRepository.cs ---
+
+using System;
+using System.Collections.Generic;
+using AmberNotes.Models;
+using Microsoft.Data.Sqlite;
+
+namespace AmberNotes.Services;
+
+/// <summary>
+/// Provides CRUD operations for the Notes table.
+/// All DateTime values are stored/retrieved as ISO-8601 UTC strings.
+/// </summary>
+public class NoteRepository
+{
+    private readonly DatabaseService _db;
+
+    public NoteRepository(DatabaseService db) => _db = db;
+
+    // ── READ ──────────────────────────────────────────────────────────────────
+
+    /// <summary>Returns all notes ordered by NoteDateTime descending.</summary>
+    public List<Note> GetAll()
+    {
+        var notes = new List<Note>();
+        using var conn = _db.OpenConnection();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            SELECT n.Id, n.Title, n.Content, n.NoteDateTime, n.CreatedAt, n.UpdatedAt,
+                   n.Type, n.BookId, b.Name AS BookName, b.IsDefault
+            FROM Notes n
+            LEFT JOIN Books b ON b.Id = n.BookId
+            ORDER BY n.NoteDateTime DESC;
+            """;
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+            notes.Add(MapNote(reader));
+        return notes;
+    }
+
+    /// <summary>Returns a single note by Id, or null if not found.</summary>
+    public Note? GetById(int id)
+    {
+        using var conn = _db.OpenConnection();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            SELECT n.Id, n.Title, n.Content, n.NoteDateTime, n.CreatedAt, n.UpdatedAt,
+                   n.Type, n.BookId, b.Name AS BookName, b.IsDefault
+            FROM Notes n
+            LEFT JOIN Books b ON b.Id = n.BookId
+            WHERE n.Id = $id;
+            """;
+        cmd.Parameters.AddWithValue("$id", id);
+        using var reader = cmd.ExecuteReader();
+        return reader.Read() ? MapNote(reader) : null;
+    }
+
+    // ── CREATE ────────────────────────────────────────────────────────────────
+
+    /// <summary>Inserts a new note and sets its Id. Returns the inserted note.</summary>
+    public Note Create(Note note)
+    {
+        var now = DateTime.UtcNow;
+        note.CreatedAt = now;
+        note.UpdatedAt = now;
+
+        using var conn = _db.OpenConnection();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            INSERT INTO Notes (Title, Content, NoteDateTime, CreatedAt, UpdatedAt, Type, BookId)
+            VALUES ($title, $content, $noteDateTime, $createdAt, $updatedAt, $type, $bookId);
+            SELECT last_insert_rowid();
+            """;
+        cmd.Parameters.AddWithValue("$title", note.Title);
+        cmd.Parameters.AddWithValue("$content", note.Content);
+        cmd.Parameters.AddWithValue("$noteDateTime", note.NoteDateTime.ToString("o"));
+        cmd.Parameters.AddWithValue("$createdAt", note.CreatedAt.ToString("o"));
+        cmd.Parameters.AddWithValue("$updatedAt", note.UpdatedAt.ToString("o"));
+        cmd.Parameters.AddWithValue("$type", note.Type.ToString());
+        cmd.Parameters.AddWithValue("$bookId", note.BookId);
+
+        note.Id = Convert.ToInt32(cmd.ExecuteScalar());
+        return note;
+    }
+
+    // ── UPDATE ────────────────────────────────────────────────────────────────
+
+    /// <summary>Updates an existing note. Sets UpdatedAt to UtcNow.</summary>
+    public void Update(Note note)
+    {
+        note.UpdatedAt = DateTime.UtcNow;
+
+        using var conn = _db.OpenConnection();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            UPDATE Notes
+            SET Title        = $title,
+                Content      = $content,
+                NoteDateTime = $noteDateTime,
+                UpdatedAt    = $updatedAt,
+                Type         = $type,
+                BookId       = $bookId
+            WHERE Id = $id;
+            """;
+        cmd.Parameters.AddWithValue("$title", note.Title);
+        cmd.Parameters.AddWithValue("$content", note.Content);
+        cmd.Parameters.AddWithValue("$noteDateTime", note.NoteDateTime.ToString("o"));
+        cmd.Parameters.AddWithValue("$updatedAt", note.UpdatedAt.ToString("o"));
+        cmd.Parameters.AddWithValue("$type", note.Type.ToString());
+        cmd.Parameters.AddWithValue("$bookId", note.BookId);
+        cmd.Parameters.AddWithValue("$id", note.Id);
+        cmd.ExecuteNonQuery();
+    }
+
+    // ── DELETE ────────────────────────────────────────────────────────────────
+
+    /// <summary>Deletes a note by Id.</summary>
+    public void Delete(int id)
+    {
+        using var conn = _db.OpenConnection();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "DELETE FROM Notes WHERE Id = $id;";
+        cmd.Parameters.AddWithValue("$id", id);
+        cmd.ExecuteNonQuery();
+    }
+
+    // ── MAPPING ───────────────────────────────────────────────────────────────
+
+    private static Note MapNote(SqliteDataReader r) => new()
+    {
+        Id           = r.GetInt32(0),
+        Title        = r.GetString(1),
+        Content      = r.GetString(2),
+        NoteDateTime = DateTime.Parse(r.GetString(3)),
+        CreatedAt    = DateTime.Parse(r.GetString(4)).ToUniversalTime(),
+        UpdatedAt    = DateTime.Parse(r.GetString(5)).ToUniversalTime(),
+        Type         = Enum.Parse<NoteType>(r.GetString(6)),
+        BookId       = r.GetInt32(7),
+        Book = r.IsDBNull(8) ? null : new Book
+        {
+            Id        = r.GetInt32(7),
+            Name      = r.GetString(8),
+            IsDefault = r.GetInt32(9) == 1
+        }
+    };
+}
+
+
+
+--- FILE: .\AmberNotes\ViewModels\AppViewModel.cs ---
+
+using AmberNotes.Services;
+using CommunityToolkit.Mvvm.ComponentModel;
+
+namespace AmberNotes.ViewModels;
+
+/// <summary>
+/// Top-level application ViewModel that owns the root navigation state.
+///
+/// On startup, CurrentViewModel = LoginViewModel (App Lock screen).
+/// After successful authentication, SwitchToMain() replaces it with MainViewModel.
+///
+/// MainWindow.axaml binds its ContentControl.Content to CurrentViewModel;
+/// Avalonia's ViewLocator (Application.DataTemplates) maps the VM to the correct View.
+/// </summary>
+public partial class AppViewModel : ViewModelBase
+{
+    [ObservableProperty]
+    private ViewModelBase _currentViewModel;
+
+    public AppViewModel(LoginViewModel loginViewModel)
+    {
+        _currentViewModel = loginViewModel;
+    }
+
+    /// <summary>
+    /// Called by App.axaml.cs after LoginViewModel.LoginSucceeded fires.
+    /// Replaces the lock screen with the main notes dashboard.
+    /// </summary>
+    public void SwitchToMain(NoteRepository noteRepo, BookRepository bookRepo)
+    {
+        CurrentViewModel = new MainViewModel(noteRepo, bookRepo);
+    }
+}
+
+
+
+--- FILE: .\AmberNotes\ViewModels\LoginViewModel.cs ---
+
+using System;
+using System.Threading.Tasks;
+using AmberNotes.Services;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+
+namespace AmberNotes.ViewModels;
+
+/// <summary>
+/// Handles the App Lock screen.
+///
+/// First run  (IsFirstRun = true):  prompts the user to create a master password.
+/// Subsequent (IsFirstRun = false): requires the correct master password to unlock.
+///
+/// SECURITY rules:
+///   - The plaintext password is kept in memory only during SubmitAsync and wiped immediately after.
+///   - The derived hex key is never stored in this ViewModel; it is forwarded to DatabaseService
+///     and then discarded from this scope.
+///   - Nothing related to the password or key is ever written to logs.
+/// </summary>
+public partial class LoginViewModel : ViewModelBase
+{
+    private readonly CryptoService   _cryptoService;
+    private readonly DatabaseService _databaseService;
+
+    // ── Observable state ──────────────────────────────────────────────────────
+
+    [ObservableProperty]
+    private string  _password        = string.Empty;
+
+    [ObservableProperty]
+    private string  _confirmPassword = string.Empty;
+
+    [ObservableProperty]
+    private string? _errorMessage;
+
+    [ObservableProperty]
+    private bool    _isBusy;
+
+    /// <summary>
+    /// True on the very first launch (no salt file → no vault yet).
+    /// The View binds to this to show/hide the "Confirm password" field.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isFirstRun;
+
+    // ── Computed helpers (UI binding) ─────────────────────────────────────────
+
+    /// <summary>True when ErrorMessage is non-empty. Used to show/hide the error panel.</summary>
+    public bool HasError  => !string.IsNullOrEmpty(ErrorMessage);
+
+    /// <summary>Inverted IsBusy — disables inputs and button while PBKDF2 is running.</summary>
+    public bool IsNotBusy => !IsBusy;
+
+    /// <summary>Button label adapts to the current mode.</summary>
+    public string ButtonText => IsFirstRun ? "Створити сховище" : "Розблокувати";
+
+    /// <summary>Subtitle adapts to the current mode.</summary>
+    public string SubtitleText => IsFirstRun
+        ? "Придумайте надійний майстер-пароль для захисту ваших нотаток"
+        : "Введіть майстер-пароль для доступу до вашого сховища";
+
+    partial void OnErrorMessageChanged(string? value) => OnPropertyChanged(nameof(HasError));
+    partial void OnIsBusyChanged(bool value)           => OnPropertyChanged(nameof(IsNotBusy));
+
+    // ── Events ────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Raised when authentication succeeds and the vault is open.
+    /// Listeners (App.axaml.cs) should build repositories and switch to MainViewModel.
+    /// </summary>
+    public event Action? LoginSucceeded;
+
+    // ── Constructor ───────────────────────────────────────────────────────────
+
+    public LoginViewModel(CryptoService cryptoService, DatabaseService databaseService)
+    {
+        _cryptoService   = cryptoService;
+        _databaseService = databaseService;
+
+        // Snapshot at startup: salt file existence determines which UI mode to show
+        _isFirstRun = cryptoService.IsFirstRun;
+    }
+
+    // ── Commands ──────────────────────────────────────────────────────────────
+
+    [RelayCommand]
+    private async Task SubmitAsync()
+    {
+        ErrorMessage = null;
+
+        if (string.IsNullOrWhiteSpace(Password))
+        {
+            ErrorMessage = IsFirstRun
+                ? "Придумайте майстер-пароль для захисту вашого сховища."
+                : "Введіть пароль для розблокування сховища.";
+            return;
+        }
+
+        if (IsFirstRun && Password != ConfirmPassword)
+        {
+            ErrorMessage = "Паролі не збігаються. Спробуйте ще раз.";
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            // ── v0.2 → v0.3 migration guard ───────────────────────────────────
+            // On first run, an old unencrypted database might exist from v0.2.
+            // SQLCipher cannot open it → delete it to start fresh with encryption.
+            if (IsFirstRun && !_databaseService.IsNewDatabase)
+                _databaseService.DeleteDatabaseFile();
+
+            // PBKDF2 is CPU-heavy (256k iterations) — run off the UI thread
+            var hexKey = await Task.Run(() => _cryptoService.DeriveKey(Password));
+
+            if (!_databaseService.TryUnlockWithKey(hexKey))
+            {
+                ErrorMessage = IsFirstRun
+                    ? "Не вдалося створити сховище. Спробуйте ще раз."
+                    : "Невірний пароль. Спробуйте ще раз.";
+                return;
+            }
+
+            // Vault is open → create schema (idempotent)
+            _databaseService.Initialize();
+
+            // Notify listeners (App.axaml.cs) to build repos and switch view
+            LoginSucceeded?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Помилка авторизації: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+            // Wipe plaintext password from memory as soon as possible
+            Password        = string.Empty;
+            ConfirmPassword = string.Empty;
+        }
+    }
+}
+
+
+
+--- FILE: .\AmberNotes\ViewModels\MainViewModel.cs ---
+
+using System.Collections.ObjectModel;
+using AmberNotes.Models;
+using AmberNotes.Services;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+
+namespace AmberNotes.ViewModels;
+
+public partial class MainViewModel : ViewModelBase
+{
+    // Exposed for use in MainView.axaml.cs (dialog creation)
+    public NoteRepository NoteRepo { get; }
+    public BookRepository BookRepo { get; }
+
+    // ── Notes list ────────────────────────────────────────────────────────────
+
+    public ObservableCollection<Note> Notes { get; } = [];
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(EditNoteCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DeleteNoteCommand))]
+    private Note? _selectedNote;
+
+    // ── Events (for View to open dialogs) ─────────────────────────────────────
+
+    /// <summary>
+    /// Raised when the user wants to create or edit a note.
+    /// The View subscribes and opens NoteEditView as a dialog.
+    /// int? = noteId (null = new note).
+    /// </summary>
+    public event System.Action<int?>? OpenNoteEditRequested;
+
+    // ── Constructor ───────────────────────────────────────────────────────────
+
+    public MainViewModel(NoteRepository noteRepo, BookRepository bookRepo)
+    {
+        NoteRepo = noteRepo;
+        BookRepo = bookRepo;
+        LoadNotes();
+    }
+
+    // ── Commands ──────────────────────────────────────────────────────────────
+
+    [RelayCommand]
+    private void CreateNote() => OpenNoteEditRequested?.Invoke(null);
+
+    [RelayCommand(CanExecute = nameof(HasSelectedNote))]
+    private void EditNote() => OpenNoteEditRequested?.Invoke(SelectedNote!.Id);
+
+    [RelayCommand(CanExecute = nameof(HasSelectedNote))]
+    private void DeleteNote()
+    {
+        if (SelectedNote is null) return;
+        NoteRepo.Delete(SelectedNote.Id);
+        Notes.Remove(SelectedNote);
+        SelectedNote = null;
+    }
+
+    // ── Public API (called by View after dialog closes) ───────────────────────
+
+    /// <summary>Reloads the notes list from the database.</summary>
+    public void RefreshNotes() => LoadNotes();
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private bool HasSelectedNote => SelectedNote is not null;
+
+    private void LoadNotes()
+    {
+        Notes.Clear();
+        foreach (var note in NoteRepo.GetAll())
+            Notes.Add(note);
+    }
+}
+
+
+
+--- FILE: .\AmberNotes\ViewModels\NoteEditViewModel.cs ---
+
+using System;
+using System.Collections.ObjectModel;
+using AmberNotes.Models;
+using AmberNotes.Services;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+
+namespace AmberNotes.ViewModels;
+
+/// <summary>
+/// ViewModel for the note edit/create dialog.
+/// Supports both creating a new note (noteId == null) and editing an existing one.
+/// </summary>
+public partial class NoteEditViewModel : ViewModelBase
+{
+    private readonly NoteRepository _noteRepo;
+    private readonly int? _noteId; // null = new note
+
+    // ── Bindable fields ───────────────────────────────────────────────────────
+
+    [ObservableProperty]
+    private string _title = string.Empty;
+
+    [ObservableProperty]
+    private string _content = string.Empty;
+
+    [ObservableProperty]
+    private DateTime? _noteDate = DateTime.Today;
+
+    [ObservableProperty]
+    private NoteType _selectedType = NoteType.Public;
+
+    [ObservableProperty]
+    private Book? _selectedBook;
+
+    [ObservableProperty]
+    private string _windowTitle = "Нова нотатка";
+
+    // ── Collections ───────────────────────────────────────────────────────────
+
+    public ObservableCollection<Book> Books { get; } = [];
+    public NoteType[] NoteTypes { get; } = Enum.GetValues<NoteType>();
+
+    // ── Events ────────────────────────────────────────────────────────────────
+
+    /// <summary>Raised when the user saves successfully. Carries the saved Note.</summary>
+    public event Action<Note>? Saved;
+
+    /// <summary>Raised when the user cancels.</summary>
+    public event Action? Cancelled;
+
+    // ── Constructor ───────────────────────────────────────────────────────────
+
+    public NoteEditViewModel(NoteRepository noteRepo, BookRepository bookRepo, int? noteId = null)
+    {
+        _noteRepo = noteRepo;
+        _noteId   = noteId;
+
+        // Load books
+        foreach (var b in bookRepo.GetAll())
+            Books.Add(b);
+
+        if (noteId.HasValue)
+        {
+            // Edit mode — load existing note
+            WindowTitle = "Редагувати нотатку";
+            var note = noteRepo.GetById(noteId.Value);
+            if (note is not null)
+            {
+                Title        = note.Title;
+                Content      = note.Content;
+                NoteDate     = note.NoteDateTime;
+                SelectedType = note.Type;
+                SelectedBook = Books.Count > 0
+                    ? FindBookById(note.BookId) ?? Books[0]
+                    : null;
+            }
+        }
+        else
+        {
+            // Create mode — pre-select default book
+            SelectedBook = Books.Count > 0 ? Books[0] : null;
+        }
+    }
+
+    // ── Commands ──────────────────────────────────────────────────────────────
+
+    [RelayCommand]
+    private void Save()
+    {
+        if (SelectedBook is null) return;
+
+        var note = new Note
+        {
+            Id           = _noteId ?? 0,
+            Title        = Title.Trim(),
+            Content      = Content,
+            NoteDateTime = NoteDate ?? DateTime.Today,
+            Type         = SelectedType,
+            BookId       = SelectedBook.Id
+        };
+
+        if (_noteId.HasValue)
+            _noteRepo.Update(note);
+        else
+            _noteRepo.Create(note);
+
+        Saved?.Invoke(note);
+    }
+
+    [RelayCommand]
+    private void Cancel() => Cancelled?.Invoke();
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private Book? FindBookById(int id)
+    {
+        foreach (var b in Books)
+            if (b.Id == id) return b;
+        return null;
+    }
+}
+
+
+
+--- FILE: .\AmberNotes\ViewModels\ViewModelBase.cs ---
+
+using CommunityToolkit.Mvvm.ComponentModel;
+
+namespace AmberNotes.ViewModels
+{
+    public abstract class ViewModelBase : ObservableObject
+    {
+    }
+}
+
+
+
+--- FILE: .\AmberNotes\Views\AppView.axaml ---
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AmberNotes.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="720"
+             x:Class="AmberNotes.Views.AppView"
+             x:DataType="vm:AppViewModel">
+
+    <!--
+        Mobile/Single-view root — mirrors what MainWindow does on Desktop.
+        AppViewModel.CurrentViewModel is mapped to its View via ViewLocator.
+    -->
+    <ContentControl Content="{Binding CurrentViewModel}" />
+
+</UserControl>
+
+
+
+--- FILE: .\AmberNotes\Views\AppView.axaml.cs ---
+
+using Avalonia.Controls;
+
+namespace AmberNotes.Views;
+
+public partial class AppView : UserControl
+{
+    public AppView()
+    {
+        InitializeComponent();
+    }
+}
+
+
+
+--- FILE: .\AmberNotes\Views\LoginView.axaml ---
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AmberNotes.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
+             x:Class="AmberNotes.Views.LoginView"
+             x:DataType="vm:LoginViewModel"
+             Background="#2B1B10">
+
+    <!-- Enter key triggers submit from any focused field -->
+    <UserControl.KeyBindings>
+        <KeyBinding Gesture="Enter" Command="{Binding SubmitCommand}" />
+    </UserControl.KeyBindings>
+
+    <UserControl.Styles>
+        <!-- Amber-tinted TextBox — overrides Fluent theme for this screen -->
+        <Style Selector="TextBox">
+            <Setter Property="Background"            Value="#3A2212" />
+            <Setter Property="BorderBrush"           Value="#7A4A25" />
+            <Setter Property="Foreground"            Value="#F5E6C8" />
+            <Setter Property="CaretBrush"            Value="#FFBF00" />
+            <Setter Property="SelectionBrush"        Value="#80FFBF00" />
+            <Setter Property="CornerRadius"          Value="8" />
+            <Setter Property="Padding"               Value="12,10" />
+            <Setter Property="FontSize"              Value="14" />
+        </Style>
+        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="#FFBF00" />
+        </Style>
+        <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="#C49030" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid>
+
+        <!-- ── Centered login card ── -->
+        <Border CornerRadius="18"
+                Background="#3D2514"
+                Padding="44,38"
+                MaxWidth="400"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                BoxShadow="0 6 48 0 #A0000000">
+
+            <StackPanel Spacing="20">
+
+                <!-- Lock icon -->
+                <TextBlock Text="🔐"
+                           FontSize="54"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,2" />
+
+                <!-- App name + subtitle -->
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Amber Notes"
+                               FontSize="28"
+                               FontWeight="Bold"
+                               Foreground="#FFBF00"
+                               HorizontalAlignment="Center"
+                               LetterSpacing="0.5" />
+                    <TextBlock Text="{Binding SubtitleText}"
+                               FontSize="13"
+                               Foreground="#B8875A"
+                               HorizontalAlignment="Center"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               MaxWidth="300" />
+                </StackPanel>
+
+                <!-- Divider -->
+                <Border Height="1" Background="#5A3518" Margin="0,4" />
+
+                <!-- ── Password field ── -->
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Майстер-пароль"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Foreground="#D4A970"
+                               Margin="2,0,0,0" />
+                    <TextBox x:Name="PasswordInput"
+                             Text="{Binding Password}"
+                             PasswordChar="•"
+                             PlaceholderText="Введіть пароль..."
+                             IsEnabled="{Binding IsNotBusy}" />
+                </StackPanel>
+
+                <!-- ── Confirm password (first run only) ── -->
+                <StackPanel Spacing="6" IsVisible="{Binding IsFirstRun}">
+                    <TextBlock Text="Підтвердіть пароль"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Foreground="#D4A970"
+                               Margin="2,0,0,0" />
+                    <TextBox Text="{Binding ConfirmPassword}"
+                             PasswordChar="•"
+                             PlaceholderText="Повторіть пароль..."
+                             IsEnabled="{Binding IsNotBusy}" />
+                </StackPanel>
+
+                <!-- ── Error message ── -->
+                <Border Background="#3D0E0E"
+                        BorderBrush="#6B1A1A"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="12,9"
+                        IsVisible="{Binding HasError}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="⚠"
+                                   Foreground="#FF7070"
+                                   FontSize="14"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding ErrorMessage}"
+                                   Foreground="#FF9090"
+                                   FontSize="13"
+                                   TextWrapping="Wrap"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+
+                <!-- ── Submit button ── -->
+                <Button Content="{Binding ButtonText}"
+                        Command="{Binding SubmitCommand}"
+                        IsEnabled="{Binding IsNotBusy}"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"
+                        Padding="16,13"
+                        FontSize="15"
+                        FontWeight="SemiBold"
+                        CornerRadius="10">
+                    <Button.Styles>
+                        <Style Selector="Button">
+                            <Setter Property="Background" Value="#FFBF00" />
+                            <Setter Property="Foreground" Value="#1E100A" />
+                        </Style>
+                        <Style Selector="Button:pointerover /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#FFCF30" />
+                        </Style>
+                        <Style Selector="Button:pressed /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#E0A800" />
+                        </Style>
+                        <Style Selector="Button:disabled /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#6B5010" />
+                            <Setter Property="TextElement.Foreground" Value="#A08040" />
+                        </Style>
+                    </Button.Styles>
+                </Button>
+
+                <!-- ── Loading bar ── -->
+                <ProgressBar IsIndeterminate="True"
+                             IsVisible="{Binding IsBusy}"
+                             Foreground="#FFBF00"
+                             Background="#5A3518"
+                             Height="3"
+                             CornerRadius="2"
+                             Margin="0,-8,0,0" />
+
+                <!-- ── First-run security hint ── -->
+                <TextBlock IsVisible="{Binding IsFirstRun}"
+                           Text="💡 Цей пароль неможливо відновити. Запам'ятайте або збережіть його у надійному місці."
+                           FontSize="11"
+                           Foreground="#7A5535"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap"
+                           MaxWidth="300" />
+
+            </StackPanel>
+        </Border>
+
+    </Grid>
+</UserControl>
+
+
+
+--- FILE: .\AmberNotes\Views\LoginView.axaml.cs ---
+
+using Avalonia.Controls;
+using Avalonia.VisualTree;
+
+namespace AmberNotes.Views;
+
+public partial class LoginView : UserControl
+{
+    public LoginView()
+    {
+        InitializeComponent();
+
+        // Auto-focus the password field as soon as the view is shown
+        AttachedToVisualTree += (_, _) => PasswordInput.Focus();
+    }
+}
+
+
+
+--- FILE: .\AmberNotes\Views\MainView.axaml ---
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:AmberNotes.ViewModels"
+             xmlns:models="using:AmberNotes.Models"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="550"
+             x:Class="AmberNotes.Views.MainView"
+             x:DataType="vm:MainViewModel">
+
+  <Design.DataContext>
+    <vm:MainViewModel />
+  </Design.DataContext>
+
+  <Grid RowDefinitions="Auto,*">
+
+    <!-- ── Toolbar ── -->
+    <Border Grid.Row="0"
+            Padding="16,10"
+            BorderThickness="0,0,0,1"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <Button Content="＋ Створити"
+                Command="{Binding CreateNoteCommand}"
+                Padding="14,7" />
+        <Button Content="✏ Редагувати"
+                Command="{Binding EditNoteCommand}"
+                Padding="14,7" />
+        <Button Content="🗑 Видалити"
+                Command="{Binding DeleteNoteCommand}"
+                Padding="14,7" />
+      </StackPanel>
+    </Border>
+
+    <!-- ── Notes list ── -->
+    <Grid Grid.Row="1">
+
+      <!-- Empty state -->
+      <TextBlock Text="Нотаток ще немає. Натисніть «＋ Створити»."
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center"
+                 Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}"
+                 FontSize="15"
+                 IsVisible="{Binding !Notes.Count}" />
+
+      <ListBox ItemsSource="{Binding Notes}"
+               SelectedItem="{Binding SelectedNote}"
+               Margin="0">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="models:Note">
+            <Grid ColumnDefinitions="*,Auto" Margin="4,6">
+
+              <!-- Left: title + content preview -->
+              <StackPanel Grid.Column="0" Spacing="2">
+                <TextBlock Text="{Binding Title}"
+                           FontWeight="SemiBold"
+                           FontSize="14"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding Content}"
+                           FontSize="12"
+                           MaxLines="2"
+                           TextTrimming="CharacterEllipsis"
+                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+              </StackPanel>
+
+              <!-- Right: date + type badge -->
+              <StackPanel Grid.Column="1"
+                          Spacing="4"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Top"
+                          Margin="12,0,0,0">
+                <TextBlock Text="{Binding NoteDateTime, StringFormat='{}{0:dd.MM.yyyy}'}"
+                           FontSize="11"
+                           HorizontalAlignment="Right"
+                           Foreground="{DynamicResource SystemControlForegroundBaseMediumBrush}" />
+                <Border CornerRadius="4"
+                        Padding="6,2"
+                        HorizontalAlignment="Right"
+                        Background="{DynamicResource SystemAccentColorLight2}">
+                  <TextBlock Text="{Binding Type}"
+                             FontSize="10"
+                             Foreground="White" />
+                </Border>
+              </StackPanel>
+
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+    </Grid>
+
+    <!-- Overlay for Android/SingleView dialogs -->
+    <Panel Name="DialogOverlay"
+           Grid.Row="0" Grid.RowSpan="2"
+           Background="#80000000"
+           IsVisible="False">
+      <Border Background="{DynamicResource SystemRegionBrush}"
+              CornerRadius="12"
+              Margin="16"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Stretch"
+              BoxShadow="0 4 20 0 #40000000">
+        <ContentControl Name="DialogContent" />
+      </Border>
+    </Panel>
+
+  </Grid>
+</UserControl>
+
+
+
+--- FILE: .\AmberNotes\Views\MainView.axaml.cs ---
+
+using AmberNotes.Models;
+using AmberNotes.Services;
+using AmberNotes.ViewModels;
+using Avalonia.Controls;
+
+namespace AmberNotes.Views;
+
+public partial class MainView : UserControl
+{
+    public MainView()
+    {
+        InitializeComponent();
+        DataContextChanged += OnDataContextChanged;
+    }
+
+    private void OnDataContextChanged(object? sender, System.EventArgs e)
+    {
+        if (DataContext is MainViewModel vm)
+            vm.OpenNoteEditRequested += OnOpenNoteEditRequested;
+    }
+
+    private async void OnOpenNoteEditRequested(int? noteId)
+    {
+        if (DataContext is not MainViewModel mainVm) return;
+
+        var editVm = new NoteEditViewModel(mainVm.NoteRepo, mainVm.BookRepo, noteId);
+        var editView = new NoteEditView(editVm);
+
+        var topLevel = TopLevel.GetTopLevel(this);
+
+        if (topLevel is Window parentWindow)
+        {
+            // ── Desktop Logic: Show in a real Window ──
+            var window = new Window
+            {
+                Title = editVm.WindowTitle,
+                Content = editView,
+                Width = 560,
+                Height = 520,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                CanResize = true
+            };
+
+            void OnSaved(Note note) => window.Close(true);
+            void OnCancelled() => window.Close(false);
+
+            editVm.Saved += OnSaved;
+            editVm.Cancelled += OnCancelled;
+
+            await window.ShowDialog(parentWindow);
+
+            editVm.Saved -= OnSaved;
+            editVm.Cancelled -= OnCancelled;
+        }
+        else
+        {
+            // ── Android/Mobile Logic: Show as Overlay ──
+            DialogContent.Content = editView;
+            DialogOverlay.IsVisible = true;
+
+            var tcs = new System.Threading.Tasks.TaskCompletionSource<bool>();
+
+            void OnSaved(Note note) { tcs.TrySetResult(true); }
+            void OnCancelled() { tcs.TrySetResult(false); }
+
+            editVm.Saved += OnSaved;
+            editVm.Cancelled += OnCancelled;
+
+            await tcs.Task;
+
+            editVm.Saved -= OnSaved;
+            editVm.Cancelled -= OnCancelled;
+
+            DialogOverlay.IsVisible = false;
+            DialogContent.Content = null;
+        }
+
+        mainVm.RefreshNotes();
+    }
+}
+
+
+
+--- FILE: .\AmberNotes\Views\MainWindow.axaml ---
+
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:AmberNotes.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
+        x:Class="AmberNotes.Views.MainWindow"
+        x:DataType="vm:AppViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="AmberNotes"
+        MinWidth="480" MinHeight="320">
+
+    <!--
+        AppViewModel.CurrentViewModel drives all navigation:
+          LoginViewModel  → LoginView   (App Lock screen, step 13)
+          MainViewModel   → MainView    (Notes dashboard)
+        ViewLocator (Application.DataTemplates) resolves the mapping automatically.
+    -->
+    <ContentControl Content="{Binding CurrentViewModel}" />
+
+</Window>
+
+
+
+--- FILE: .\AmberNotes\Views\MainWindow.axaml.cs ---
+
+using Avalonia.Controls;
+
+namespace AmberNotes.Views
+{
+    public partial class MainWindow : Window
+    {
+        public MainWindow()
+        {
+            InitializeComponent();
+        }
+    }
+}
+
+
+--- FILE: .\AmberNotes\Views\NoteEditView.axaml ---
+
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:AmberNotes.ViewModels"
+             mc:Ignorable="d"
+             x:Class="AmberNotes.Views.NoteEditView"
+             x:DataType="vm:NoteEditViewModel">
+
+  <Design.DataContext>
+    <vm:NoteEditViewModel />
+  </Design.DataContext>
+
+  <Grid RowDefinitions="*,Auto" Margin="24">
+
+    <!-- ── Fields ── -->
+    <ScrollViewer Grid.Row="0">
+      <StackPanel Spacing="14">
+
+        <!-- Title -->
+        <StackPanel Spacing="4">
+          <TextBlock Text="Заголовок" FontWeight="SemiBold" />
+          <TextBox Text="{Binding Title}"
+                   PlaceholderText="Введіть заголовок…"
+                   MaxLength="200" />
+        </StackPanel>
+
+        <!-- Content -->
+        <StackPanel Spacing="4">
+          <TextBlock Text="Текст нотатки" FontWeight="SemiBold" />
+          <TextBox Text="{Binding Content}"
+                   PlaceholderText="Введіть текст…"
+                   AcceptsReturn="True"
+                   TextWrapping="Wrap"
+                   MinHeight="140"
+                   MaxHeight="240" />
+        </StackPanel>
+
+        <!-- Book -->
+        <StackPanel Spacing="4">
+          <TextBlock Text="Книга" FontWeight="SemiBold" />
+          <ComboBox ItemsSource="{Binding Books}"
+                    SelectedItem="{Binding SelectedBook}"
+                    HorizontalAlignment="Stretch">
+            <ComboBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding Name}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+        </StackPanel>
+
+        <!-- Type -->
+        <StackPanel Spacing="4">
+          <TextBlock Text="Тип" FontWeight="SemiBold" />
+          <ComboBox ItemsSource="{Binding NoteTypes}"
+                    SelectedItem="{Binding SelectedType}"
+                    HorizontalAlignment="Stretch" />
+        </StackPanel>
+
+        <!-- Date -->
+        <StackPanel Spacing="4">
+          <TextBlock Text="Дата запису" FontWeight="SemiBold" />
+          <CalendarDatePicker SelectedDate="{Binding NoteDate}"
+                              HorizontalAlignment="Stretch" />
+        </StackPanel>
+
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- ── Buttons ── -->
+    <StackPanel Grid.Row="1"
+                Orientation="Horizontal"
+                HorizontalAlignment="Right"
+                Spacing="12"
+                Margin="0,16,0,0">
+      <Button Content="Скасувати"
+              Command="{Binding CancelCommand}"
+              MinWidth="100" Padding="16,8" />
+      <Button Content="Зберегти"
+              Command="{Binding SaveCommand}"
+              Classes="accent"
+              MinWidth="100" Padding="16,8" />
+    </StackPanel>
+
+  </Grid>
+</UserControl>
+
+
+
+--- FILE: .\AmberNotes\Views\NoteEditView.axaml.cs ---
+
+using AmberNotes.ViewModels;
+using Avalonia.Controls;
+
+namespace AmberNotes.Views;
+
+public partial class NoteEditView : UserControl
+{
+    public NoteEditView()
+    {
+        InitializeComponent();
+    }
+
+    public NoteEditView(NoteEditViewModel vm) : this()
+    {
+        DataContext = vm;
+    }
+}
+
+
+
+--- FILE: .\AmberNotes.Android\AmberNotes.Android.csproj ---
+
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-android</TargetFramework>
+    <SupportedOSPlatformVersion>23</SupportedOSPlatformVersion>
+    <Nullable>enable</Nullable>
+    <ApplicationId>com.CompanyName.AmberNotes</ApplicationId>
+    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <AndroidPackageFormat>apk</AndroidPackageFormat>
+    <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AndroidResource Include="Icon.png">
+      <Link>Resources\drawable\Icon.png</Link>
+    </AndroidResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Android" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlcipher" />
+    <PackageReference Include="Xamarin.AndroidX.Core.SplashScreen" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AmberNotes\AmberNotes.csproj" />
+  </ItemGroup>
+</Project>
+
+
+
+--- FILE: .\AmberNotes.Android\Application.cs ---
+
+using Android.App;
+using Android.Runtime;
+using Avalonia;
+using Avalonia.Android;
+using SQLitePCL;
+
+namespace AmberNotes.Android
+{
+    [Application]
+    public class Application : AvaloniaAndroidApplication<App>
+    {
+        protected Application(nint javaReference, JniHandleOwnership transfer) : base(javaReference, transfer)
+        {
+        }
+
+        public override void OnCreate()
+        {
+            // Initialize SQLitePCLRaw native provider before any SQLite usage
+            Batteries_V2.Init();
+            base.OnCreate();
+        }
+
+        protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
+        {
+            return base.CustomizeAppBuilder(builder)
+                .WithInterFont();
+        }
+    }
+}
+
+
+
+--- FILE: .\AmberNotes.Android\MainActivity.cs ---
+
+using Android.App;
+using Android.Content.PM;
+using Avalonia;
+using Avalonia.Android;
+
+namespace AmberNotes.Android
+{
+    [Activity(
+        Label = "AmberNotes.Android",
+        Theme = "@style/MyTheme.NoActionBar",
+        Icon = "@drawable/icon",
+        MainLauncher = true,
+        ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.UiMode)]
+    public class MainActivity : AvaloniaMainActivity
+    {
+    }
+}
+
+
+
+--- FILE: .\AmberNotes.Desktop\AmberNotes.Desktop.csproj ---
+
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!--If you are willing to use platform-specific APIs, use conditional compilation.
+    See https://docs.avaloniaui.net/docs/guides/platforms/platform-specific-code/dotnet for more details.-->
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlcipher" />
+    <PackageReference Include="AvaloniaUI.DiagnosticsSupport" >
+      <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
+      <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AmberNotes\AmberNotes.csproj" />
+  </ItemGroup>
+</Project>
+
+
+
+--- FILE: .\AmberNotes.Desktop\Program.cs ---
+
+using Avalonia;
+using SQLitePCL;
+using System;
+
+namespace AmberNotes.Desktop
+{
+    internal sealed class Program
+    {
+        // Initialization code. Don't use any Avalonia, third-party APIs or any
+        // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
+        // yet and stuff might break.
+        [STAThread]
+        public static void Main(string[] args)
+        {
+            // Initialize SQLitePCLRaw provider (must be called before any SQLite usage)
+            Batteries_V2.Init();
+
+            BuildAvaloniaApp()
+                .StartWithClassicDesktopLifetime(args);
+        }
+
+        // Avalonia configuration, don't remove; also used by visual designer.
+        public static AppBuilder BuildAvaloniaApp()
+            => AppBuilder.Configure<App>()
+                .UsePlatformDetect()
+#if DEBUG
+                .WithDeveloperTools()
+#endif
+                .WithInterFont()
+                .LogToTrace();
+    }
+}
+
