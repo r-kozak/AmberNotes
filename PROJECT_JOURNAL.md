@@ -70,7 +70,7 @@ MainWindow / AppView
 **Поточна версія:** v0.4: Writing Experience & Modes 
 - [x] **Крок 15: Themes.** Створення ResourceDictionary для "Amber Noir" та "Saffron Linen". Налаштування DynamicResource для всіх компонентів.
 - [x] **Крок 16: ModeSwitcher.** Реалізація сервісу перемикання режимів та UI-контрола в Header.
-- [ ] **Крок 17: Security Bridge.** Оновлення логіки входу: запит пароля лише для Приватного режиму. Розділення потоків даних Public/Private.
+- [x] **Крок 17: Security Bridge.** Оновлення логіки входу: запит пароля лише для Приватного режиму. Розділення потоків даних Public/Private.
 - [ ] **Крок 18: Markdown Core.** Підключення Markdig. Створення NoteEditorView з підтримкою Markdown-розмітки.
 - [ ] **Крок 19: Single-Window Navigation.** Впровадження ViewLocator або Router для зміни екранів (List <-> Editor) без нових вікон.
 
@@ -134,3 +134,46 @@ MainWindow / AppView
   - **Visual Cue (Private mode):** Напівпрозорий `Panel` з `AppPrivateGlow` `Border` (BorderThickness=3) покриває весь view (`ZIndex=500`, `IsHitTestVisible=False`) коли `IsPrivateMode=true`.
 - **Результат:** `dotnet build` — **succeeded** ✅ (0 помилок, Desktop + Android)
 - **Наступний крок:** Крок 17 — Security Bridge (password re-prompt для Private mode, відокремлена public.db).
+
+### 2026-05-07 — Крок 17: Security Bridge (v0.4 продовження) — ФІНАЛЬНА ВЕРСІЯ
+
+- **Ключова логіка запуску (виправлено):**
+  - Застосунок **завжди** стартує в Public режимі без будь-якого LoginView.
+  - Пароль **ніколи** не запитується при запуску — користувач може використовувати публічні нотатки нескінченно без пароля.
+  - LoginView з'являється **лише** коли користувач натискає "🔒 Приватний":
+    - немає `ambernotes.salt` (перший вхід у приватний) → LoginView з формою **створення** сховища.
+    - `ambernotes.salt` є → LoginView з формою **розблокування** сховища.
+    - При скасуванні → повернення до MainView в Public режимі без змін.
+
+- **Зроблено:** Розділення даних на дві незалежних бази даних:
+  - `public.db` — незашифрована plain SQLite. Містить публічні нотатки (`NoteType.Public`). Відкривається при запуску.
+  - `ambernotes.db` — SQLCipher AES-256. Містить приватні нотатки (`NoteType.Private`). Відкривається лише після введення майстер-пароля в Private режимі.
+
+- **Зроблено (DatabaseService.cs):** `UnlockAsPlain()` + `OpenConnectionPlain()`. `OpenConnection()` перевіряє `_isPlain` — без `PRAGMA key` для public.db.
+
+- **Зроблено (App.axaml.cs):** Простий лінійний старт без розгалуження:
+  1. `ThemeService.Instance.Initialize()`
+  2. `publicDbService.UnlockAsPlain()` + `Initialize()` → публічні репо.
+  3. `privateDbService` + `cryptoSvc` — тільки конфігуруються, не відкриваються.
+  4. `appVm.SwitchToMain(...)` → одразу MainView в Public режимі.
+  5. `mainVm.PrivateLoginRequested += () => appVm.ShowPrivateLogin(...)` — підписка на подію.
+
+- **Зроблено (AppViewModel.cs):** Спрощено до одного конструктора. `SwitchToMain()` тепер повертає `MainViewModel` (для підписки на події). Новий метод `ShowPrivateLogin(cryptoSvc, privateDbService, mainVm)`:
+  - Створює `LoginViewModel` з `CanCancel=true`.
+  - Підписується на `LoginSucceeded` → будує приватні репо → `mainVm.SetPrivateRepos()` → `ModeService.SetMode(Private)` → `CurrentViewModel = mainVm`.
+  - Підписується на `LoginCancelled` → `CurrentViewModel = mainVm` (без зміни режиму).
+
+- **Зроблено (LoginViewModel.cs):** Нові властивість `CanCancel` (`[ObservableProperty]`), подія `LoginCancelled`, команда `CancelCommand` — очищає поля та викликає `LoginCancelled`.
+
+- **Зроблено (LoginView.axaml):** Кнопка "Скасувати" (`IsVisible="{Binding CanCancel}"`) — прозорий стиль з бурштиновою рамкою; розташована після security hint.
+
+- **Зроблено (MainViewModel.cs):**
+  - Видалено `UnlockOverlay`/`IsUnlockOverlayVisible`/`PrivateUnlockViewModel`.
+  - Додано `event Action? PrivateLoginRequested` — стріляє в `SetPrivateModeCommand` коли приватний репо ще null.
+  - Додано `SetPrivateRepos(NoteRepository, BookRepository)` — викликається `AppViewModel` після успішного входу.
+  - `LoadNotes()` — гвард проти null при недоступному приватному репо.
+
+- **Зроблено (MainView.axaml):** Видалено `Panel (ZIndex=800)` з `ContentControl Content="{Binding UnlockOverlay}"`. `PrivateUnlockView` overlay більше не потрібен.
+
+- **Результат:** `dotnet build` — **succeeded** ✅ (0 помилок, 0 попереджень, Desktop)
+- **Наступний крок:** Крок 18 — Markdown Core (Markdig + NoteEditorView з Live Preview).

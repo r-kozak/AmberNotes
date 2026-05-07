@@ -1,0 +1,177 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:AmberNotes.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="360"
+             x:Class="AmberNotes.Views.PrivateUnlockView"
+             x:DataType="vm:PrivateUnlockViewModel"
+             Background="Transparent">
+
+    <!-- Enter key triggers unlock from any focused field -->
+    <UserControl.KeyBindings>
+        <KeyBinding Gesture="Enter" Command="{Binding UnlockCommand}" />
+        <KeyBinding Gesture="Escape" Command="{Binding CancelCommand}" />
+    </UserControl.KeyBindings>
+
+    <UserControl.Styles>
+        <!-- Amber-tinted TextBox — local override for this overlay -->
+        <Style Selector="TextBox">
+            <Setter Property="Background"     Value="#3A2212" />
+            <Setter Property="BorderBrush"    Value="#7A4A25" />
+            <Setter Property="Foreground"     Value="#F5E6C8" />
+            <Setter Property="CaretBrush"     Value="#FFBF00" />
+            <Setter Property="SelectionBrush" Value="#80FFBF00" />
+            <Setter Property="CornerRadius"   Value="8" />
+            <Setter Property="Padding"        Value="12,10" />
+            <Setter Property="FontSize"       Value="14" />
+        </Style>
+        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="#FFBF00" />
+        </Style>
+        <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="BorderBrush" Value="#C49030" />
+        </Style>
+    </UserControl.Styles>
+
+    <!-- Centered unlock card -->
+    <Border CornerRadius="16"
+            Background="#2A1A0A"
+            BorderBrush="#5A3518"
+            BorderThickness="1"
+            Padding="36,28"
+            MaxWidth="400"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            BoxShadow="0 8 60 0 #B0000000">
+
+        <StackPanel Spacing="18">
+
+            <!-- ── Icon + Title ── -->
+            <StackPanel Spacing="6" HorizontalAlignment="Center">
+                <TextBlock Text="🔒"
+                           FontSize="40"
+                           HorizontalAlignment="Center" />
+                <TextBlock Text="Приватний режим"
+                           FontSize="20"
+                           FontWeight="Bold"
+                           Foreground="#FFBF00"
+                           HorizontalAlignment="Center"
+                           LetterSpacing="0.3" />
+                <TextBlock Text="Введіть майстер-пароль для доступу до приватних нотаток"
+                           FontSize="12"
+                           Foreground="#9A7040"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap"
+                           MaxWidth="280" />
+            </StackPanel>
+
+            <!-- Divider -->
+            <Border Height="1" Background="#4A3018" Margin="0,2" />
+
+            <!-- ── Password field ── -->
+            <StackPanel Spacing="6">
+                <TextBlock Text="Майстер-пароль"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           Foreground="#C49030"
+                           Margin="2,0,0,0" />
+                <TextBox x:Name="PasswordInput"
+                         Text="{Binding Password}"
+                         PasswordChar="•"
+                         PlaceholderText="Введіть пароль..."
+                         IsEnabled="{Binding IsNotBusy}" />
+            </StackPanel>
+
+            <!-- ── Error message ── -->
+            <Border Background="#3D0E0E"
+                    BorderBrush="#6B1A1A"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="12,8"
+                    IsVisible="{Binding HasError}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="⚠"
+                               Foreground="#FF7070"
+                               FontSize="13"
+                               VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding ErrorMessage}"
+                               Foreground="#FF9090"
+                               FontSize="12"
+                               TextWrapping="Wrap"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
+
+            <!-- ── Progress bar ── -->
+            <ProgressBar IsIndeterminate="True"
+                         IsVisible="{Binding IsBusy}"
+                         Foreground="#FFBF00"
+                         Background="#5A3518"
+                         Height="3"
+                         CornerRadius="2"
+                         Margin="0,-10,0,0" />
+
+            <!-- ── Action buttons ── -->
+            <Grid ColumnDefinitions="*,10,*">
+
+                <!-- Cancel -->
+                <Button Grid.Column="0"
+                        Content="Скасувати"
+                        Command="{Binding CancelCommand}"
+                        IsEnabled="{Binding IsNotBusy}"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"
+                        Padding="12,11"
+                        FontSize="14"
+                        CornerRadius="9">
+                    <Button.Styles>
+                        <Style Selector="Button">
+                            <Setter Property="Background" Value="#3A2515" />
+                            <Setter Property="Foreground" Value="#C49030" />
+                            <Setter Property="BorderBrush" Value="#5A3518" />
+                            <Setter Property="BorderThickness" Value="1" />
+                        </Style>
+                        <Style Selector="Button:pointerover /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#4A3020" />
+                        </Style>
+                    </Button.Styles>
+                </Button>
+
+                <!-- Unlock -->
+                <Button Grid.Column="2"
+                        Content="Розблокувати"
+                        Command="{Binding UnlockCommand}"
+                        IsEnabled="{Binding IsNotBusy}"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"
+                        Padding="12,11"
+                        FontSize="14"
+                        FontWeight="SemiBold"
+                        CornerRadius="9">
+                    <Button.Styles>
+                        <Style Selector="Button">
+                            <Setter Property="Background" Value="#FFBF00" />
+                            <Setter Property="Foreground" Value="#1E100A" />
+                            <Setter Property="BorderThickness" Value="0" />
+                        </Style>
+                        <Style Selector="Button:pointerover /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#FFCF30" />
+                        </Style>
+                        <Style Selector="Button:pressed /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#E0A800" />
+                        </Style>
+                        <Style Selector="Button:disabled /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#6B5010" />
+                            <Setter Property="TextElement.Foreground" Value="#A08040" />
+                        </Style>
+                    </Button.Styles>
+                </Button>
+
+            </Grid>
+
+        </StackPanel>
+    </Border>
+
+</UserControl>

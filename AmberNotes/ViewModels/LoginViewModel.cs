@@ -63,13 +63,28 @@ public partial class LoginViewModel : ViewModelBase
     partial void OnErrorMessageChanged(string? value) => OnPropertyChanged(nameof(HasError));
     partial void OnIsBusyChanged(bool value)           => OnPropertyChanged(nameof(IsNotBusy));
 
+    // ── Cancel support ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// When true the "Скасувати" button is shown.
+    /// Set by the caller (AppViewModel) before displaying this VM.
+    /// </summary>
+    [ObservableProperty]
+    private bool _canCancel;
+
     // ── Events ────────────────────────────────────────────────────────────────
 
     /// <summary>
     /// Raised when authentication succeeds and the vault is open.
-    /// Listeners (App.axaml.cs) should build repositories and switch to MainViewModel.
+    /// Listeners (AppViewModel) should set private repos and switch back to MainViewModel.
     /// </summary>
     public event Action? LoginSucceeded;
+
+    /// <summary>
+    /// Raised when the user cancels the login screen (only possible when CanCancel=true).
+    /// Listeners (AppViewModel) should restore MainViewModel without changing mode.
+    /// </summary>
+    public event Action? LoginCancelled;
 
     // ── Constructor ───────────────────────────────────────────────────────────
 
@@ -78,11 +93,20 @@ public partial class LoginViewModel : ViewModelBase
         _cryptoService   = cryptoService;
         _databaseService = databaseService;
 
-        // Snapshot at startup: salt file existence determines which UI mode to show
+        // Snapshot at construction time: salt file existence determines which UI mode to show
         _isFirstRun = cryptoService.IsFirstRun;
     }
 
     // ── Commands ──────────────────────────────────────────────────────────────
+
+    [RelayCommand]
+    private void Cancel()
+    {
+        Password        = string.Empty;
+        ConfirmPassword = string.Empty;
+        ErrorMessage    = null;
+        LoginCancelled?.Invoke();
+    }
 
     [RelayCommand]
     private async Task SubmitAsync()

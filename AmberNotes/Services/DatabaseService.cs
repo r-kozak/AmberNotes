@@ -30,6 +30,9 @@ public class DatabaseService
     // 64-char lowercase hex — never logged, cleared on unlock failure
     private string? _hexKey;
 
+    // True when this service manages an un-encrypted (public) database
+    private bool _isPlain;
+
     public DatabaseService(string dbPath)
     {
         _dbPath = dbPath;
@@ -37,6 +40,15 @@ public class DatabaseService
 
     /// <summary>True when the database file does not yet exist (first run).</summary>
     public bool IsNewDatabase => !File.Exists(_dbPath);
+
+    /// <summary>
+    /// Marks this service as an unencrypted (plain SQLite) database — used for public.db.
+    /// After calling this, OpenConnection() and Initialize() work without any PRAGMA key.
+    /// </summary>
+    public void UnlockAsPlain()
+    {
+        _isPlain = true;
+    }
 
     /// <summary>
     /// Attempts to open the database with the provided 256-bit hex key.
@@ -73,15 +85,18 @@ public class DatabaseService
     }
 
     /// <summary>
-    /// Opens a new authenticated connection.
+    /// Opens a new authenticated connection (encrypted or plain depending on how the service was unlocked).
     /// The caller is responsible for disposing it.
-    /// Throws <see cref="InvalidOperationException"/> if TryUnlockWithKey() was not called first.
+    /// Throws <see cref="InvalidOperationException"/> if neither UnlockAsPlain() nor TryUnlockWithKey() was called.
     /// </summary>
     public SqliteConnection OpenConnection()
     {
+        if (_isPlain)
+            return OpenConnectionPlain();
+
         if (_hexKey is null)
             throw new InvalidOperationException(
-                "Database key not set. Call TryUnlockWithKey() before opening connections.");
+                "Database not unlocked. Call UnlockAsPlain() or TryUnlockWithKey() first.");
 
         return OpenConnectionInternal(_hexKey);
     }
@@ -120,6 +135,29 @@ public class DatabaseService
     }
 
     // ── Internal helpers ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Opens a plain (unencrypted) SQLite connection — used for public.db.
+    /// No PRAGMA key is applied; this works with the SQLitePCLRaw.bundle_e_sqlcipher
+    /// provider because SQLCipher is backward-compatible with plain SQLite files.
+    /// If the database file or directory does not exist yet, they are created.
+    /// </summary>
+    private SqliteConnection OpenConnectionPlain()
+    {
+        var dir = Path.GetDirectoryName(_dbPath);
+        if (!string.IsNullOrEmpty(dir))
+            Directory.CreateDirectory(dir);
+
+        var connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = _dbPath,
+            Mode       = SqliteOpenMode.ReadWriteCreate,
+        }.ToString();
+
+        var connection = new SqliteConnection(connectionString);
+        connection.Open();
+        return connection;
+    }
 
     /// <summary>
     /// Opens a connection and immediately applies the SQLCipher key as raw hex bytes.
