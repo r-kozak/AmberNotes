@@ -3,7 +3,6 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:AmberNotes.ViewModels"
-             xmlns:models="using:AmberNotes.Models"
              mc:Ignorable="d" d:DesignWidth="820" d:DesignHeight="580"
              x:Class="AmberNotes.Views.MainView"
              x:DataType="vm:MainViewModel"
@@ -11,70 +10,32 @@
 
   <!--
     ═══════════════════════════════════════════════════════════════════════
-    MainView — Notes Dashboard (v0.4)
-    All colour references use DynamicResource so theme switches are instant.
+    MainView — Dashboard Shell (v0.4 / Step 19)
+
+    Single-window navigation: this view is the shell that hosts
+    a top toolbar (mode + theme) and a TransitioningContentControl
+    that switches between:
+      • MainListView   (MainListViewModel  — notes list)
+      • NoteEditView   (NoteEditViewModel  — markdown editor)
+
+    No code-behind navigation logic — 100% MVVM via CurrentPage binding.
+    All colours via DynamicResource → instant theme switching.
     ═══════════════════════════════════════════════════════════════════════
   -->
 
-  <!-- Root: toolbar row + content row -->
   <Grid RowDefinitions="Auto,*">
 
-    <!-- ═══════════ TOOLBAR ═══════════════════════════════════════════════ -->
+    <!-- ═══════════ TOOLBAR (Mode + Theme) ════════════════════════════════ -->
     <Border Grid.Row="0"
             Background="{DynamicResource AppToolbar}"
             Padding="12,8"
             BorderThickness="0,0,0,1"
             BorderBrush="{DynamicResource AppBorder}">
 
-      <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
-
-        <!-- ── Left: CRUD action buttons ──────────────────────────────── -->
-        <StackPanel Grid.Column="0"
-                    Orientation="Horizontal"
-                    Spacing="6"
-                    VerticalAlignment="Center">
-
-          <!-- Create Note -->
-          <Button Content="＋ Створити"
-                  Command="{Binding CreateNoteCommand}"
-                  Padding="12,7"
-                  CornerRadius="8"
-                  FontWeight="SemiBold"
-                  FontSize="13">
-            <Button.Styles>
-              <Style Selector="Button">
-                <Setter Property="Background" Value="{DynamicResource AppPrimary}" />
-                <Setter Property="Foreground" Value="{DynamicResource AppOnPrimary}" />
-                <Setter Property="BorderThickness" Value="0" />
-              </Style>
-              <Style Selector="Button:pointerover /template/ ContentPresenter">
-                <Setter Property="Opacity" Value="0.88" />
-              </Style>
-              <Style Selector="Button:pressed /template/ ContentPresenter">
-                <Setter Property="Opacity" Value="0.75" />
-              </Style>
-            </Button.Styles>
-          </Button>
-
-          <!-- Edit Note -->
-          <Button Content="✏"
-                  Command="{Binding EditNoteCommand}"
-                  Padding="10,7"
-                  CornerRadius="8"
-                  FontSize="14"
-                  ToolTip.Tip="Редагувати виділену нотатку" />
-
-          <!-- Delete Note -->
-          <Button Content="🗑"
-                  Command="{Binding DeleteNoteCommand}"
-                  Padding="10,7"
-                  CornerRadius="8"
-                  FontSize="14"
-                  ToolTip.Tip="Видалити виділену нотатку" />
-        </StackPanel>
+      <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
 
         <!-- ── Center: Mode switcher (segmented control) ──────────────── -->
-        <Border Grid.Column="1"
+        <Border Grid.Column="0"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Background="{DynamicResource AppSurfaceVariant}"
@@ -153,7 +114,7 @@
         </Border>
 
         <!-- ── Right: Theme toggle ────────────────────────────────────── -->
-        <Button Grid.Column="2"
+        <Button Grid.Column="1"
                 Content="{Binding ThemeToggleIcon}"
                 Command="{Binding ToggleThemeCommand}"
                 ToolTip.Tip="{Binding ThemeToggleTip}"
@@ -165,76 +126,20 @@
       </Grid>
     </Border>
 
-    <!-- ═══════════ NOTES LIST ═══════════════════════════════════════════ -->
-    <Grid Grid.Row="1">
-
-      <!-- Empty state message -->
-      <TextBlock Text="Нотаток ще немає. Натисніть «＋ Створити»."
-                 HorizontalAlignment="Center"
-                 VerticalAlignment="Center"
-                 Foreground="{DynamicResource AppSubtext}"
-                 FontSize="15"
-                 IsVisible="{Binding !Notes.Count}" />
-
-      <!-- Notes list -->
-      <ListBox ItemsSource="{Binding Notes}"
-               SelectedItem="{Binding SelectedNote}"
-               Margin="0"
-               Background="Transparent">
-        <ListBox.Styles>
-          <!-- Remove default ListBox background from Fluent theme -->
-          <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource AppSurfaceVariant}" />
-          </Style>
-          <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource AppSurface}" />
-          </Style>
-        </ListBox.Styles>
-
-        <ListBox.ItemTemplate>
-          <DataTemplate x:DataType="models:Note">
-            <Grid ColumnDefinitions="*,Auto" Margin="8,6">
-
-              <!-- Left: title + content preview -->
-              <StackPanel Grid.Column="0" Spacing="3">
-                <TextBlock Text="{Binding Title}"
-                           FontWeight="SemiBold"
-                           FontSize="14"
-                           Foreground="{DynamicResource AppOnSurface}"
-                           TextTrimming="CharacterEllipsis" />
-                <TextBlock Text="{Binding Content}"
-                           FontSize="12"
-                           MaxLines="2"
-                           TextTrimming="CharacterEllipsis"
-                           Foreground="{DynamicResource AppSubtext}" />
-              </StackPanel>
-
-              <!-- Right: date + type badge -->
-              <StackPanel Grid.Column="1"
-                          Spacing="4"
-                          HorizontalAlignment="Right"
-                          VerticalAlignment="Top"
-                          Margin="12,0,0,0">
-                <TextBlock Text="{Binding NoteDateTime, StringFormat='{}{0:dd.MM.yyyy}'}"
-                           FontSize="11"
-                           HorizontalAlignment="Right"
-                           Foreground="{DynamicResource AppSubtext}" />
-                <Border CornerRadius="4"
-                        Padding="6,2"
-                        HorizontalAlignment="Right"
-                        Background="{DynamicResource AppPrimary}">
-                  <TextBlock Text="{Binding Type}"
-                             FontSize="10"
-                             Foreground="{DynamicResource AppOnPrimary}" />
-                </Border>
-              </StackPanel>
-
-            </Grid>
-          </DataTemplate>
-        </ListBox.ItemTemplate>
-      </ListBox>
-
-    </Grid>
+    <!-- ═══════════ PAGE CONTENT (List ↔ Editor) ══════════════════════════ -->
+    <!--
+      TransitioningContentControl drives all in-window navigation.
+      CurrentPage is set by MainViewModel:
+        • MainListViewModel  → MainListView  (displayed by DataTemplate)
+        • NoteEditViewModel  → NoteEditView  (displayed by DataTemplate)
+      CrossFade 250 ms gives a smooth, non-jarring page switch.
+    -->
+    <TransitioningContentControl Grid.Row="1"
+                                  Content="{Binding CurrentPage}">
+      <TransitioningContentControl.PageTransition>
+        <CrossFade Duration="0:0:0.25" />
+      </TransitioningContentControl.PageTransition>
+    </TransitioningContentControl>
 
     <!-- ═══════════ PRIVATE MODE GLOW OVERLAY ═══════════════════════════ -->
     <!--
@@ -250,27 +155,6 @@
       <Border BorderBrush="{DynamicResource AppPrivateGlow}"
               BorderThickness="3"
               CornerRadius="0" />
-    </Panel>
-
-    <!-- ═══════════ DIALOG OVERLAY (Android / SingleView) ═══════════════ -->
-    <!--
-      On mobile platforms where we cannot open a real Window,
-      NoteEditView is shown here as a full-screen overlay.
-      MainView.axaml.cs toggles IsVisible and sets DialogContent.
-    -->
-    <Panel Name="DialogOverlay"
-           Grid.Row="0" Grid.RowSpan="2"
-           Background="#88000000"
-           IsVisible="False"
-           ZIndex="1000">
-      <Border Background="{DynamicResource AppSurface}"
-              CornerRadius="14"
-              Margin="16"
-              HorizontalAlignment="Stretch"
-              VerticalAlignment="Stretch"
-              BoxShadow="0 6 32 0 #50000000">
-        <ContentControl Name="DialogContent" />
-      </Border>
     </Panel>
 
   </Grid>

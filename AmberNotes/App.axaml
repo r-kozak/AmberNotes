@@ -1,11 +1,35 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="using:AmberNotes"
+             xmlns:vm="using:AmberNotes.ViewModels"
+             xmlns:views="using:AmberNotes.Views"
              x:Class="AmberNotes.App"
              RequestedThemeVariant="Dark">
 
+    <!--
+        DataTemplates — ViewModel → View mappings.
+
+        Explicit templates for the two navigation pages handle the
+        in-window List ↔ Editor switch inside MainView.
+
+        ViewLocator (fallback) resolves the remaining VM types
+        (LoginViewModel, MainViewModel, AppViewModel) via naming convention.
+    -->
     <Application.DataTemplates>
-        <local:ViewLocator/>
+
+        <!-- MainListViewModel  →  MainListView  (notes list page) -->
+        <DataTemplate DataType="{x:Type vm:MainListViewModel}">
+            <views:MainListView />
+        </DataTemplate>
+
+        <!-- NoteEditViewModel  →  NoteEditView  (markdown editor page) -->
+        <DataTemplate DataType="{x:Type vm:NoteEditViewModel}">
+            <views:NoteEditView />
+        </DataTemplate>
+
+        <!-- Fallback: resolves LoginViewModel, MainViewModel, AppViewModel etc. -->
+        <local:ViewLocator />
+
     </Application.DataTemplates>
 
     <!--

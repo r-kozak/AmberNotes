@@ -72,7 +72,7 @@ MainWindow / AppView
 - [x] **Крок 16: ModeSwitcher.** Реалізація сервісу перемикання режимів та UI-контрола в Header.
 - [x] **Крок 17: Security Bridge.** Оновлення логіки входу: запит пароля лише для Приватного режиму. Розділення потоків даних Public/Private.
 - [x] **Крок 18: Markdown Core.** Підключення Markdig + Markdown.Avalonia. Створення NoteEditorView з підтримкою Markdown-розмітки та перемикачем Edit/Preview.
-- [ ] **Крок 19: Single-Window Navigation.** Впровадження ViewLocator або Router для зміни екранів (List <-> Editor) без нових вікон.
+- [x] **Крок 19: Single-Window Navigation.** Впровадження ViewLocator або Router для зміни екранів (List <-> Editor) без нових вікон.
 
 
 ## Журнал сесій (Session Log)
@@ -201,4 +201,36 @@ MainWindow / AppView
 - **Технічна примітка:** `Markdown.Avalonia 12.0.0-a3` — `MarkdownStyle` у цьому релізі не реалізує `Avalonia.Styling.IStyle` і не потребує явного додавання до `Application.Styles`. `MarkdownScrollViewer` рендерить Markdown через внутрішній Markdig-пайплайн, нативними Avalonia-контролами.
 
 - **Результат:** `dotnet build` — **succeeded** ✅ (0 помилок, 0 попереджень, Desktop)
-- **Наступний крок:** Крок 19 — Single-Window Navigation (List ↔ Editor без нових вікон).
+
+### 2026-05-07 — Крок 19: Single-Window Navigation (v0.4 завершення)
+
+- **Ключова зміна:** Повна реорганізація навігації — жодних нових `Window`, лише `CurrentPage` у `MainViewModel`.
+
+- **Нові файли:**
+  - `MainListViewModel.cs` — ViewModel для сторінки списку нотаток. Отримує спільний `ObservableCollection<Note>` із `MainViewModel`. Команди `CreateNoteCommand`, `EditNoteCommand`, `DeleteNoteCommand` + `SelectedNote`. Делегує навігацію та видалення через `Action`-callbacks у `MainViewModel`.
+  - `MainListView.axaml` / `.cs` — View для сторінки списку. Власний CRUD-тулбар (Create/Edit/Delete) + `ListBox` зі списком нотаток. `x:DataType="MainListViewModel"`.
+
+- **Оновлено (MainViewModel.cs):**
+  - Додано `[ObservableProperty] ViewModelBase _currentPage` — точка навігації.
+  - У конструкторі: `_listVm = new MainListViewModel(Notes, GoToEditor, id => NoteRepo.Delete(id))` → `CurrentPage = _listVm`.
+  - `private void GoToEditor(int? noteId)` — створює `NoteEditViewModel`, підписується на `Saved` (LoadNotes + GoBackToList) та `Cancelled` (GoBackToList), встановлює `CurrentPage = editVm`.
+  - `private void GoBackToList()` — `CurrentPage = _listVm`.
+  - Видалено: `OpenNoteEditRequested` event, `CreateNote`/`EditNote`/`DeleteNote`/`SelectedNote` (перенесено в `MainListViewModel`), `RefreshNotes()`.
+
+- **Оновлено (MainView.axaml):**
+  - Shell із тулбаром (лише Mode Switcher + Theme Toggle — без CRUD кнопок).
+  - `TransitioningContentControl Content="{Binding CurrentPage}"` + `CrossFade Duration="0:0:0.25"` замість списку нотаток.
+  - Збережено Private Mode Glow overlay (ZIndex=500).
+  - Видалено: DialogOverlay / DialogContent (більше не потрібні).
+
+- **Оновлено (MainView.axaml.cs):** Зведено до мінімуму — лише `InitializeComponent()`. Жодної логіки `Window.ShowDialog`, `DialogOverlay`, подій.
+
+- **Оновлено (MainWindow.axaml):** `ContentControl` → `TransitioningContentControl Content="{Binding CurrentViewModel}"` + `CrossFade Duration="0:0:0.25"` (плавний перехід Login ↔ Main).
+
+- **Оновлено (App.axaml):**
+  - Додано `xmlns:vm` та `xmlns:views` namespace.
+  - Явні `DataTemplate` перед `ViewLocator`: `MainListViewModel → MainListView`, `NoteEditViewModel → NoteEditView`.
+  - `ViewLocator` залишається як fallback для `LoginViewModel`, `MainViewModel`, `AppViewModel`.
+
+- **Результат:** `dotnet build` — **succeeded** ✅ (0 помилок, 0 попереджень, Desktop)
+- **Статус v0.4:** Крок 19 ЗАВЕРШЕНО ✅

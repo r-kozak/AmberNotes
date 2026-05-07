@@ -6,6 +6,16 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace AmberNotes.ViewModels;
 
+/// <summary>
+/// Shell ViewModel for the main dashboard.
+///
+/// Responsibilities:
+///   • Owns the Notes collection and repo references.
+///   • Controls mode (Public / Private) and theme switching.
+///   • Manages in-window navigation via CurrentPage:
+///       MainListViewModel  → notes list (default)
+///       NoteEditViewModel  → note editor (create / edit)
+/// </summary>
 public partial class MainViewModel : ViewModelBase
 {
     // ── Repositories ──────────────────────────────────────────────────────────
@@ -34,13 +44,20 @@ public partial class MainViewModel : ViewModelBase
             ? _privateBookRepo
             : _publicBookRepo;
 
-    // ── Notes list ────────────────────────────────────────────────────────────
+    // ── Notes list (shared with MainListViewModel) ────────────────────────────
     public ObservableCollection<Note> Notes { get; } = [];
 
+    // ── Navigation ────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The currently visible sub-page inside MainView.
+    /// Switches between MainListViewModel (list) and NoteEditViewModel (editor).
+    /// Bound to TransitioningContentControl in MainView.axaml.
+    /// </summary>
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(EditNoteCommand))]
-    [NotifyCanExecuteChangedFor(nameof(DeleteNoteCommand))]
-    private Note? _selectedNote;
+    private ViewModelBase _currentPage = null!;
+
+    private MainListViewModel? _listVm;
 
     // ── Mode state ────────────────────────────────────────────────────────────
 
@@ -66,8 +83,6 @@ public partial class MainViewModel : ViewModelBase
 
     /// <summary>Fired when user taps "🔒 Приватний" and vault is not yet unlocked.</summary>
     public event System.Action? PrivateLoginRequested;
-
-    public event System.Action<int?>? OpenNoteEditRequested;
 
     // ── Constructor ───────────────────────────────────────────────────────────
 
@@ -97,25 +112,35 @@ public partial class MainViewModel : ViewModelBase
         ThemeService.Instance.ThemeChanged += theme =>
             IsDarkTheme = theme == AppTheme.AmberNoir;
 
+        // Create the list sub-page (shared Notes collection, callbacks for actions)
+        _listVm = new MainListViewModel(
+            Notes,
+            navigateToEditor: GoToEditor,
+            deleteNote:       id => NoteRepo.Delete(id));
+
+        CurrentPage = _listVm;
         LoadNotes();
     }
 
-    // ── CRUD Commands ─────────────────────────────────────────────────────────
+    // ── Navigation ────────────────────────────────────────────────────────────
 
-    [RelayCommand]
-    private void CreateNote() => OpenNoteEditRequested?.Invoke(null);
-
-    [RelayCommand(CanExecute = nameof(HasSelectedNote))]
-    private void EditNote() => OpenNoteEditRequested?.Invoke(SelectedNote!.Id);
-
-    [RelayCommand(CanExecute = nameof(HasSelectedNote))]
-    private void DeleteNote()
+    /// <summary>
+    /// Switches CurrentPage to a NoteEditViewModel for the given note (or new).
+    /// On Save → reloads list and goes back.
+    /// On Cancel → goes back without changes.
+    /// </summary>
+    private void GoToEditor(int? noteId)
     {
-        if (SelectedNote is null) return;
-        NoteRepo.Delete(SelectedNote.Id);
-        Notes.Remove(SelectedNote);
-        SelectedNote = null;
+        var editVm = new NoteEditViewModel(NoteRepo, BookRepo, noteId);
+
+        editVm.Saved     += _ => { LoadNotes(); GoBackToList(); };
+        editVm.Cancelled += ()  => GoBackToList();
+
+        CurrentPage = editVm;
     }
+
+    /// <summary>Returns CurrentPage to the notes list.</summary>
+    private void GoBackToList() => CurrentPage = _listVm!;
 
     // ── Mode Commands ─────────────────────────────────────────────────────────
 
@@ -132,12 +157,10 @@ public partial class MainViewModel : ViewModelBase
     {
         if (_privateNoteRepo is not null)
         {
-            // Already unlocked this session — just switch
             ModeService.Instance.SetMode(AppMode.Private);
             return;
         }
 
-        // Delegate to App-level navigation (AppViewModel will show LoginView full-screen)
         PrivateLoginRequested?.Invoke();
     }
 
@@ -158,11 +181,7 @@ public partial class MainViewModel : ViewModelBase
         _privateBookRepo = bookRepo;
     }
 
-    public void RefreshNotes() => LoadNotes();
-
     // ── Helpers ───────────────────────────────────────────────────────────────
-
-    private bool HasSelectedNote => SelectedNote is not null;
 
     private void LoadNotes()
     {

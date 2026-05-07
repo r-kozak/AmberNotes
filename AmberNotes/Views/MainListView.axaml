@@ -1,0 +1,148 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:AmberNotes.ViewModels"
+             xmlns:models="using:AmberNotes.Models"
+             mc:Ignorable="d" d:DesignWidth="820" d:DesignHeight="530"
+             x:Class="AmberNotes.Views.MainListView"
+             x:DataType="vm:MainListViewModel"
+             Background="{DynamicResource AppBackground}">
+
+  <!--
+    ═══════════════════════════════════════════════════════════════════════
+    MainListView — Notes List Page (v0.4 / Step 19)
+
+    Layout:
+      [0] CRUD toolbar   — Create / Edit / Delete buttons
+      [1] Notes list     — ListBox with empty-state message
+
+    DataContext = MainListViewModel (set by DataTemplate in App.axaml).
+    All colours via DynamicResource → works with AmberNoir + SaffronLinen.
+    ═══════════════════════════════════════════════════════════════════════
+  -->
+
+  <Grid RowDefinitions="Auto,*">
+
+    <!-- ═══════════ CRUD TOOLBAR ══════════════════════════════════════════ -->
+    <Border Grid.Row="0"
+            Background="{DynamicResource AppSurface}"
+            Padding="12,8"
+            BorderThickness="0,0,0,1"
+            BorderBrush="{DynamicResource AppBorder}">
+
+      <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+
+        <!-- Create Note -->
+        <Button Content="＋ Створити"
+                Command="{Binding CreateNoteCommand}"
+                Padding="12,7"
+                CornerRadius="8"
+                FontWeight="SemiBold"
+                FontSize="13">
+          <Button.Styles>
+            <Style Selector="Button">
+              <Setter Property="Background" Value="{DynamicResource AppPrimary}" />
+              <Setter Property="Foreground" Value="{DynamicResource AppOnPrimary}" />
+              <Setter Property="BorderThickness" Value="0" />
+            </Style>
+            <Style Selector="Button:pointerover /template/ ContentPresenter">
+              <Setter Property="Opacity" Value="0.88" />
+            </Style>
+            <Style Selector="Button:pressed /template/ ContentPresenter">
+              <Setter Property="Opacity" Value="0.75" />
+            </Style>
+          </Button.Styles>
+        </Button>
+
+        <!-- Edit Note -->
+        <Button Content="✏"
+                Command="{Binding EditNoteCommand}"
+                Padding="10,7"
+                CornerRadius="8"
+                FontSize="14"
+                ToolTip.Tip="Редагувати виділену нотатку" />
+
+        <!-- Delete Note -->
+        <Button Content="🗑"
+                Command="{Binding DeleteNoteCommand}"
+                Padding="10,7"
+                CornerRadius="8"
+                FontSize="14"
+                ToolTip.Tip="Видалити виділену нотатку" />
+
+      </StackPanel>
+    </Border>
+
+    <!-- ═══════════ NOTES LIST ═══════════════════════════════════════════ -->
+    <Grid Grid.Row="1">
+
+      <!-- Empty state -->
+      <TextBlock Text="Нотаток ще немає. Натисніть «＋ Створити»."
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center"
+                 Foreground="{DynamicResource AppSubtext}"
+                 FontSize="15"
+                 IsVisible="{Binding !Notes.Count}" />
+
+      <!-- Notes list -->
+      <ListBox ItemsSource="{Binding Notes}"
+               SelectedItem="{Binding SelectedNote}"
+               Margin="0"
+               Background="Transparent">
+        <ListBox.Styles>
+          <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AppSurfaceVariant}" />
+          </Style>
+          <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AppSurface}" />
+          </Style>
+        </ListBox.Styles>
+
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="models:Note">
+            <Grid ColumnDefinitions="*,Auto" Margin="8,6">
+
+              <!-- Left: title + content preview -->
+              <StackPanel Grid.Column="0" Spacing="3">
+                <TextBlock Text="{Binding Title}"
+                           FontWeight="SemiBold"
+                           FontSize="14"
+                           Foreground="{DynamicResource AppOnSurface}"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding Content}"
+                           FontSize="12"
+                           MaxLines="2"
+                           TextTrimming="CharacterEllipsis"
+                           Foreground="{DynamicResource AppSubtext}" />
+              </StackPanel>
+
+              <!-- Right: date + type badge -->
+              <StackPanel Grid.Column="1"
+                          Spacing="4"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Top"
+                          Margin="12,0,0,0">
+                <TextBlock Text="{Binding NoteDateTime, StringFormat='{}{0:dd.MM.yyyy}'}"
+                           FontSize="11"
+                           HorizontalAlignment="Right"
+                           Foreground="{DynamicResource AppSubtext}" />
+                <Border CornerRadius="4"
+                        Padding="6,2"
+                        HorizontalAlignment="Right"
+                        Background="{DynamicResource AppPrimary}">
+                  <TextBlock Text="{Binding Type}"
+                             FontSize="10"
+                             Foreground="{DynamicResource AppOnPrimary}" />
+                </Border>
+              </StackPanel>
+
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+    </Grid>
+
+  </Grid>
+</UserControl>
