@@ -1,0 +1,5 @@
+{
+  "DesktopClientId":     "YOUR_DESKTOP_CLIENT_ID.apps.googleusercontent.com",
+  "DesktopClientSecret": "YOUR_DESKTOP_CLIENT_SECRET",
+  "AndroidClientId":     "YOUR_ANDROID_CLIENT_ID.apps.googleusercontent.com"
+}

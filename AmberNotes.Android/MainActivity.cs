@@ -1,8 +1,8 @@
 using Android.App;
 using Android.Content;
 using Android.Content.PM;
+using Android.OS;
 using AmberNotes.Services;
-using Avalonia;
 using Avalonia.Android;
 
 namespace AmberNotes.Android
@@ -25,7 +25,7 @@ namespace AmberNotes.Android
         // OnNewIntent is called (instead of re-creating the activity).
         // OnCreate handles the case where the app was cold-started via the URI.
 
-        protected override void OnCreate(Android.OS.Bundle? savedInstanceState)
+        protected override void OnCreate(Bundle? savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
             HandleOAuthIntent(Intent);

@@ -457,6 +457,10 @@ $RECYCLE.BIN/
 ## Amber Notes Specific Ignores
 ## =====================================
 
+# 0. OAuth secrets — НІКОЛИ не комітити реальні Client ID / Secret!
+#    Скопіюй oauth.config.example.json → oauth.config.json і заповни свої дані.
+oauth.config.json
+
 # 1. Local SQLite Databases (Щоб твої тестові/особисті нотатки не потрапили в Git)
 *.db
 *.db-shm
