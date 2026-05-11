@@ -51,9 +51,30 @@ public static class GoogleAuthConfig
         "https://www.googleapis.com/auth/drive.appdata " +
         "https://www.googleapis.com/auth/userinfo.email";
 
-    // ── Android Custom URI Scheme redirect ────────────────────────────────────
-    // Must match <data android:scheme="..." android:host="..."/> in AndroidManifest.xml
-    public const string AndroidRedirectUri = "com.kozak.ambernotes://oauth2callback";
+    // ── Android OAuth redirect (reverse-client-id URI scheme) ─────────────────
+    // Google Android OAuth clients only allow this specific format.
+    // The scheme is the reverse of the Android Client ID.
+    // See: https://developers.google.com/identity/protocols/oauth2/native-app
+
+    /// <summary>
+    /// The reverse of the Android Client ID.
+    /// E.g. "607220537111-abc.apps.googleusercontent.com" →
+    ///      "com.googleusercontent.apps.607220537111-abc"
+    /// This must match android:scheme in AndroidManifest.xml intent-filter.
+    /// </summary>
+    public static string ReverseAndroidClientId =>
+        string.IsNullOrEmpty(AndroidClientId)
+            ? string.Empty
+            : $"com.googleusercontent.apps.{AndroidClientId.Replace(".apps.googleusercontent.com", string.Empty)}";
+
+    /// <summary>
+    /// Full Android redirect URI: {ReverseAndroidClientId}:/oauth2redirect
+    /// Registered automatically by Google for Android type OAuth clients.
+    /// </summary>
+    public static string AndroidRedirectUri =>
+        string.IsNullOrEmpty(AndroidClientId)
+            ? string.Empty
+            : $"{ReverseAndroidClientId}:/oauth2redirect";
 
     // ── File names ────────────────────────────────────────────────────────────
     public const string TokensFileName = "googletokens.json";
@@ -72,7 +93,10 @@ public static class GoogleAuthConfig
         !string.IsNullOrWhiteSpace(DesktopClientId) &&
         !string.IsNullOrWhiteSpace(DesktopClientSecret);
 
-    /// <summary>True when Android Client ID has been loaded.</summary>
+    /// <summary>
+    /// True when Android Client ID has been loaded.
+    /// Android uses its own OAuth client (no secret) with the reverse-client-id URI.
+    /// </summary>
     public static bool IsAndroidConfigured =>
         !string.IsNullOrWhiteSpace(AndroidClientId);
 

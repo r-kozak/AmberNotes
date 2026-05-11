@@ -122,6 +122,10 @@ public class GoogleAuthService
 
         if (OperatingSystem.IsAndroid())
         {
+            // Android OAuth: use Android type client (no secret) with the
+            // reverse-client-id URI scheme registered automatically by Google.
+            // Redirect URI: com.googleusercontent.apps.{PREFIX}:/oauth2redirect
+            // AndroidManifest.xml must have matching android:scheme in <data>.
             clientId     = GoogleAuthConfig.AndroidClientId;
             clientSecret = null; // Android OAuth clients have no secret
             redirectUri  = GoogleAuthConfig.AndroidRedirectUri;

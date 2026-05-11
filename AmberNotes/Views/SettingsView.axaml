@@ -233,7 +233,10 @@
                        Text="4. Для Android: ще один Client ID → Android → Package: com.kozak.AmberNotes → вкажіть SHA-1." />
             <TextBlock TextWrapping="Wrap" FontSize="12"
                        Foreground="{DynamicResource AppSubtext}"
-                       Text="5. Скопіюйте oauth.config.example.json → oauth.config.json у корені проєкту та заповніть Client ID і Secret." />
+                       Text="5. Скопіюйте oauth.config.example.json → oauth.config.json та заповніть DesktopClientId і DesktopClientSecret." />
+            <TextBlock TextWrapping="Wrap" FontSize="12"
+                       Foreground="{DynamicResource AppSubtext}"
+                       Text="6. Для Android: у Desktop клієнті додайте Authorized redirect URI: com.kozak.ambernotes://oauth2callback" />
           </StackPanel>
 
         </StackPanel>
