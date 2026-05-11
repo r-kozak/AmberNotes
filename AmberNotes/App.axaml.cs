@@ -35,7 +35,9 @@ namespace AmberNotes
             var privateDbService = new DatabaseService(Path.Combine(appDataFolder, "ambernotes.db"));
 
             // ── 4. Google Drive service (loads persisted tokens automatically) ────
-            GoogleAuthConfig.Load(Path.Combine(appDataFolder, GoogleAuthConfig.ConfigFileName));
+            // Config file lives next to the executable (copied from project root by .csproj).
+            // Falls back silently if not found — app runs without Google Drive.
+            GoogleAuthConfig.Load(Path.Combine(AppContext.BaseDirectory, GoogleAuthConfig.ConfigFileName));
             var googleAuthSvc  = new GoogleAuthService(appDataFolder);
             var googleDriveSvc = new GoogleDriveService(googleAuthSvc);
 

@@ -233,7 +233,7 @@
                        Text="4. Для Android: ще один Client ID → Android → Package: com.kozak.AmberNotes → вкажіть SHA-1." />
             <TextBlock TextWrapping="Wrap" FontSize="12"
                        Foreground="{DynamicResource AppSubtext}"
-                       Text="5. Замініть YOUR_DESKTOP_CLIENT_ID та YOUR_ANDROID_CLIENT_ID у файлі GoogleAuthConfig.cs." />
+                       Text="5. Скопіюйте oauth.config.example.json → oauth.config.json у корені проєкту та заповніть Client ID і Secret." />
           </StackPanel>
 
         </StackPanel>

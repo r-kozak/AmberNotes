@@ -23,4 +23,11 @@
   <ItemGroup>
     <ProjectReference Include="..\AmberNotes\AmberNotes.csproj" />
   </ItemGroup>
+
+  <!-- Copy oauth.config.json (gitignored secrets) next to the exe on every build. -->
+  <!-- If file does not exist the build still succeeds; app runs without Google Drive. -->
+  <ItemGroup Condition="Exists('..\oauth.config.json')">
+    <None Include="..\oauth.config.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
