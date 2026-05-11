@@ -83,7 +83,7 @@ MainWindow / AppView
 - [x] **Крок 18: Markdown Core.** Підключення Markdig + Markdown.Avalonia. Створення NoteEditorView з підтримкою Markdown-розмітки та перемикачем Edit/Preview.
 - [x] **Крок 19: Single-Window Navigation.** Впровадження ViewLocator або Router для зміни екранів (List <-> Editor) без нових вікон.
 
-**Поточна версія:** v0.5: Google Drive Auth & AppData
+**Реалізована версія:** v0.5: Google Drive Auth & AppData ✅
 - [x] **Крок 20: Google Auth Infrastructure.** `PkceHelper.cs`, `GoogleAuthConfig.cs`, `GoogleTokens.cs` — PKCE RFC 7636, OAuth endpoints, константи конфігурації, зберігання токенів (JSON).
 - [x] **Крок 21: GoogleAuthService.** Повний OAuth 2.0 PKCE flow без зовнішніх SDK: Desktop (HttpListener loopback), Android (Custom URI Scheme + static TCS bridge). Обмін коду на токени, refresh, revoke, зберігання на диску.
 - [x] **Крок 22: GoogleDriveService + ICloudStorageService.** Реалізація через чистий HttpClient. `ConnectAsync`, `DisconnectAsync`, `TestConnectionAsync` (drive.appdata scope).
@@ -284,8 +284,3 @@ MainWindow / AppView
 - **Результат:** `dotnet build AmberNotes.Desktop` — **succeeded** ✅ (0 помилок)
 - **Статус v0.5:** ЗАВЕРШЕНО ✅
 
-- **Наступні кроки для активації:**
-  1. Відкрити `console.cloud.google.com` → створити проєкт → увімкнути Google Drive API.
-  2. Credentials → OAuth Client ID (Desktop app) → скопіювати Client ID + Secret у `GoogleAuthConfig.cs`.
-  3. Credentials → OAuth Client ID (Android) → Package `com.kozak.AmberNotes` → SHA-1 → скопіювати Client ID.
-  4. Запустити застосунок → ⚙ → "Підключити Google Drive".
