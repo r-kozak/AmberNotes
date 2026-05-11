@@ -76,12 +76,20 @@ MainWindow / AppView
 - [x] Крок 13: `LoginView.axaml` — повноекранний екран авторизації у бурштинових тонах (#2B1B10 фон, #FFBF00 акцент). Поле пароля (PasswordChar), поле підтвердження (IsVisible=IsFirstRun), панель помилок, кнопка «Створити сховище»/«Розблокувати», ProgressBar під час PBKDF2.
 - [x] Крок 14: Логіка ініціалізації: перший запуск → `CryptoService.IsFirstRun=true` → показ Confirm-поля + створення сховища; наступні запуски → `IsFirstRun=false` → розблокування. Міграційний guard v0.2→v0.3. `dotnet build` **succeeded** ✅ (0 помилок, 0 попереджень).
 
-**Поточна версія:** v0.4: Writing Experience & Modes 
+**Реалізована версія:** v0.4: Writing Experience & Modes ✅
 - [x] **Крок 15: Themes.** Створення ResourceDictionary для "Amber Noir" та "Saffron Linen". Налаштування DynamicResource для всіх компонентів.
 - [x] **Крок 16: ModeSwitcher.** Реалізація сервісу перемикання режимів та UI-контрола в Header.
 - [x] **Крок 17: Security Bridge.** Оновлення логіки входу: запит пароля лише для Приватного режиму. Розділення потоків даних Public/Private.
 - [x] **Крок 18: Markdown Core.** Підключення Markdig + Markdown.Avalonia. Створення NoteEditorView з підтримкою Markdown-розмітки та перемикачем Edit/Preview.
 - [x] **Крок 19: Single-Window Navigation.** Впровадження ViewLocator або Router для зміни екранів (List <-> Editor) без нових вікон.
+
+**Поточна версія:** v0.5: Google Drive Auth & AppData
+- [x] **Крок 20: Google Auth Infrastructure.** `PkceHelper.cs`, `GoogleAuthConfig.cs`, `GoogleTokens.cs` — PKCE RFC 7636, OAuth endpoints, константи конфігурації, зберігання токенів (JSON).
+- [x] **Крок 21: GoogleAuthService.** Повний OAuth 2.0 PKCE flow без зовнішніх SDK: Desktop (HttpListener loopback), Android (Custom URI Scheme + static TCS bridge). Обмін коду на токени, refresh, revoke, зберігання на диску.
+- [x] **Крок 22: GoogleDriveService + ICloudStorageService.** Реалізація через чистий HttpClient. `ConnectAsync`, `DisconnectAsync`, `TestConnectionAsync` (drive.appdata scope).
+- [x] **Крок 23: Android Integration.** `AndroidManifest.xml` — intent-filter для `com.kozak.ambernotes://oauth2callback`. `MainActivity.cs` — `OnNewIntent`/`OnCreate` → `HandleAndroidCallback`. `Application.cs` — реєстрація Android BrowserLauncher (Intent.ActionView).
+- [x] **Крок 24: SettingsView.** `SettingsViewModel.cs` + `SettingsView.axaml` — підключення/відключення Google Drive, статус з'єднання, підказки налаштування Cloud Console, тематизація.
+- [x] **Крок 25: Navigation Integration.** `MainViewModel.GoToSettingsCommand`, `AppViewModel.SwitchToMain` оновлено з `GoogleDriveService`. ⚙ кнопка в тулбарі `MainView`. `App.axaml` DataTemplate. `App.axaml.cs` — створення + передача сервісів.
 
 
 ## Журнал сесій (Session Log)
@@ -242,4 +250,42 @@ MainWindow / AppView
   - `ViewLocator` залишається як fallback для `LoginViewModel`, `MainViewModel`, `AppViewModel`.
 
 - **Результат:** `dotnet build` — **succeeded** ✅ (0 помилок, 0 попереджень, Desktop)
-- **Статус v0.4:** Крок 19 ЗАВЕРШЕНО ✅
+- **Статус v0.4:** ЗАВЕРШЕНО ✅
+
+### 2026-05-11 — Кроки 20-25: Google Drive Auth & AppData (v0.5)
+
+- **Ключова архітектурна рішення:**
+  - Реалізовано без зовнішніх Google SDK (без `Google.Apis.Drive.v3`) — чистий `HttpClient` + PKCE. Lean підхід (vibe coding).
+  - Платформна абстракція `GoogleAuthService.BrowserLauncher` (static `Func<string, Task>`) — Desktop використовує `Process.Start`, Android переписує у `Application.OnCreate()` через `Intent.ActionView`.
+  - Android callback через статичний `TaskCompletionSource` (bridge pattern) — `MainActivity.OnNewIntent` → `GoogleAuthService.HandleAndroidCallback()`.
+
+- **Нові файли (AmberNotes/Services/):**
+  - `PkceHelper.cs` — PKCE RFC 7636: генерація code_verifier (96 random bytes → base64url) + code_challenge (SHA256 → base64url).
+  - `GoogleAuthConfig.cs` — OAuth constants, endpoints, scopes (`drive.appdata`+`userinfo.email`), Android redirect URI, хелпери `IsCurrentPlatformConfigured`.
+  - `GoogleTokens.cs` — DTO з `[JsonPropertyName]`, `ExpiresAtUtc`, `IsExpired` (60-секундний буфер).
+  - `GoogleAuthService.cs` — повний OAuth 2.0 PKCE flow: Desktop (HttpListener loopback, 5хв таймаут, success HTML page), Android (Custom URI TCS bridge). `SignInAsync`, `RefreshAsync`, `RevokeAndClearAsync`. Токени → `googletokens.json`.
+  - `ICloudStorageService.cs` — інтерфейс: `IsConnected`, `ConnectedEmail`, `ConnectAsync`, `DisconnectAsync`, `TestConnectionAsync`.
+  - `GoogleDriveService.cs` — реалізація `ICloudStorageService` через Drive REST API + `HttpClient`. `TestConnectionAsync` перевіряє `appDataFolder` scope, авто-рефреш.
+
+- **Нові файли (AmberNotes/ViewModels/ + Views/):**
+  - `SettingsViewModel.cs` — `ToggleGoogleDriveCommand` (connect/disconnect), `TestConnectionCommand`, `IsGoogleConnected`, `GoogleEmail`, `IsBusy`, `ShowSetupHint` (якщо Client IDs не налаштовані).
+  - `SettingsView.axaml` — Google Drive картка (статус, прогрес-бар, кнопки підключення/тесту), картка-інструкція Google Cloud Console. Повна тематизація через DynamicResource.
+
+- **Оновлені файли:**
+  - `AndroidManifest.xml` — `<activity>` з `<intent-filter>` для scheme=`com.kozak.ambernotes`, host=`oauth2callback`, launchMode=`singleTop`.
+  - `MainActivity.cs` — `LaunchMode.SingleTop`, `OnCreate`+`OnNewIntent` → `HandleOAuthIntent` → `GoogleAuthService.HandleAndroidCallback`.
+  - `Application.cs` — реєстрація `GoogleAuthService.BrowserLauncher` через `Intent.ActionView` + `ActivityFlags.NewTask`.
+  - `MainViewModel.cs` — 5-й параметр `GoogleDriveService`, `GoToSettingsCommand`→`GoToSettings()` (CurrentPage = SettingsViewModel).
+  - `AppViewModel.cs` — `SwitchToMain` приймає `GoogleDriveService`.
+  - `App.axaml.cs` — `GetAppDataFolder()` (уніфікований шлях замість 2 окремих helper), створення `GoogleAuthService`+`GoogleDriveService`, передача до `SwitchToMain`.
+  - `App.axaml` — `DataTemplate: SettingsViewModel → SettingsView`.
+  - `MainView.axaml` — ⚙ кнопка "Налаштування" поруч з 🌙/☀ у тулбарі.
+
+- **Результат:** `dotnet build AmberNotes.Desktop` — **succeeded** ✅ (0 помилок)
+- **Статус v0.5:** ЗАВЕРШЕНО ✅
+
+- **Наступні кроки для активації:**
+  1. Відкрити `console.cloud.google.com` → створити проєкт → увімкнути Google Drive API.
+  2. Credentials → OAuth Client ID (Desktop app) → скопіювати Client ID + Secret у `GoogleAuthConfig.cs`.
+  3. Credentials → OAuth Client ID (Android) → Package `com.kozak.AmberNotes` → SHA-1 → скопіювати Client ID.
+  4. Запустити застосунок → ⚙ → "Підключити Google Drive".

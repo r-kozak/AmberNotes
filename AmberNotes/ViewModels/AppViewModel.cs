@@ -24,14 +24,15 @@ public partial class AppViewModel : ViewModelBase
     /// Returns the created MainViewModel so App.axaml.cs can subscribe to its events.
     /// </summary>
     public MainViewModel SwitchToMain(
-        NoteRepository  publicNoteRepo,
-        BookRepository  publicBookRepo,
-        DatabaseService privateDbService,
-        CryptoService   cryptoSvc)
+        NoteRepository     publicNoteRepo,
+        BookRepository     publicBookRepo,
+        DatabaseService    privateDbService,
+        CryptoService      cryptoSvc,
+        GoogleDriveService driveService)
     {
         var mainVm = new MainViewModel(
             publicNoteRepo, publicBookRepo,
-            privateDbService, cryptoSvc);
+            privateDbService, cryptoSvc, driveService);
 
         CurrentViewModel = mainVm;
         return mainVm;

@@ -113,15 +113,29 @@
           </StackPanel>
         </Border>
 
-        <!-- ── Right: Theme toggle ────────────────────────────────────── -->
-        <Button Grid.Column="1"
-                Content="{Binding ThemeToggleIcon}"
-                Command="{Binding ToggleThemeCommand}"
-                ToolTip.Tip="{Binding ThemeToggleTip}"
-                Padding="10,7"
-                CornerRadius="8"
-                FontSize="16"
-                VerticalAlignment="Center" />
+        <!-- ── Right: Settings + Theme toggle ────────────────────────── -->
+        <StackPanel Grid.Column="1"
+                    Orientation="Horizontal"
+                    Spacing="4"
+                    VerticalAlignment="Center">
+
+          <!-- Settings -->
+          <Button Content="⚙"
+                  Command="{Binding GoToSettingsCommand}"
+                  ToolTip.Tip="Налаштування"
+                  Padding="10,7"
+                  CornerRadius="8"
+                  FontSize="16" />
+
+          <!-- Theme toggle -->
+          <Button Content="{Binding ThemeToggleIcon}"
+                  Command="{Binding ToggleThemeCommand}"
+                  ToolTip.Tip="{Binding ThemeToggleTip}"
+                  Padding="10,7"
+                  CornerRadius="8"
+                  FontSize="16" />
+
+        </StackPanel>
 
       </Grid>
     </Border>

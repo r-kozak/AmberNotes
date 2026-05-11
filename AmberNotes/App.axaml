@@ -27,6 +27,11 @@
             <views:NoteEditView />
         </DataTemplate>
 
+        <!-- SettingsViewModel  →  SettingsView  (settings page) -->
+        <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+            <views:SettingsView />
+        </DataTemplate>
+
         <!-- Fallback: resolves LoginViewModel, MainViewModel, AppViewModel etc. -->
         <local:ViewLocator />
 

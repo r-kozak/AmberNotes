@@ -29,8 +29,11 @@ public partial class MainViewModel : ViewModelBase
     private BookRepository? _privateBookRepo;
 
     // Services held for lazy unlock of private vault
-    private readonly DatabaseService _privateDbService;
-    private readonly CryptoService   _cryptoSvc;
+    private readonly DatabaseService  _privateDbService;
+    private readonly CryptoService    _cryptoSvc;
+
+    // Cloud storage (Google Drive)
+    private readonly GoogleDriveService _driveService;
 
     /// <summary>Returns the note repository for the currently active mode.</summary>
     public NoteRepository NoteRepo =>
@@ -87,15 +90,17 @@ public partial class MainViewModel : ViewModelBase
     // ── Constructor ───────────────────────────────────────────────────────────
 
     public MainViewModel(
-        NoteRepository  publicNoteRepo,
-        BookRepository  publicBookRepo,
-        DatabaseService privateDbService,
-        CryptoService   cryptoSvc)
+        NoteRepository      publicNoteRepo,
+        BookRepository      publicBookRepo,
+        DatabaseService     privateDbService,
+        CryptoService       cryptoSvc,
+        GoogleDriveService  driveService)
     {
         _publicNoteRepo   = publicNoteRepo;
         _publicBookRepo   = publicBookRepo;
         _privateDbService = privateDbService;
         _cryptoSvc        = cryptoSvc;
+        _driveService     = driveService;
 
         // Sync initial state from singletons
         _isPrivateMode = ModeService.Instance.IsPrivate;
@@ -141,6 +146,17 @@ public partial class MainViewModel : ViewModelBase
 
     /// <summary>Returns CurrentPage to the notes list.</summary>
     private void GoBackToList() => CurrentPage = _listVm!;
+
+    /// <summary>
+    /// Navigates to the Settings page.
+    /// Settings button in MainView toolbar fires this command.
+    /// </summary>
+    [RelayCommand]
+    private void GoToSettings()
+    {
+        var settingsVm = new SettingsViewModel(_driveService, GoBackToList);
+        CurrentPage = settingsVm;
+    }
 
     // ── Mode Commands ─────────────────────────────────────────────────────────
 

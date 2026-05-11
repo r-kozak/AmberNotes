@@ -22,8 +22,8 @@ namespace AmberNotes
             Services.ThemeService.Instance.Initialize();
 
             // ── 2. Public database (always available, no password required) ───────
-            var publicDbPath    = GetPublicDatabasePath();
-            var publicDbService = new DatabaseService(publicDbPath);
+            var appDataFolder   = GetAppDataFolder();
+            var publicDbService = new DatabaseService(Path.Combine(appDataFolder, "public.db"));
             publicDbService.UnlockAsPlain();
             publicDbService.Initialize();      // creates tables + seed book if needed
 
@@ -31,22 +31,25 @@ namespace AmberNotes
             var publicBookRepo = new BookRepository(publicDbService);
 
             // ── 3. Private database (encrypted; stays locked until user unlocks) ──
-            var privateDbPath    = GetPrivateDatabasePath();
-            var cryptoSvc        = new CryptoService(Path.GetDirectoryName(privateDbPath)!);
-            var privateDbService = new DatabaseService(privateDbPath);
+            var cryptoSvc        = new CryptoService(appDataFolder);
+            var privateDbService = new DatabaseService(Path.Combine(appDataFolder, "ambernotes.db"));
 
-            // ── 4. Always start in Public mode — no Login screen at startup ───────
+            // ── 4. Google Drive service (loads persisted tokens automatically) ────
+            var googleAuthSvc  = new GoogleAuthService(appDataFolder);
+            var googleDriveSvc = new GoogleDriveService(googleAuthSvc);
+
+            // ── 5. Always start in Public mode — no Login screen at startup ───────
             var appVm  = new AppViewModel();
             var mainVm = appVm.SwitchToMain(publicNoteRepo, publicBookRepo,
-                                            privateDbService, cryptoSvc);
+                                            privateDbService, cryptoSvc, googleDriveSvc);
 
-            // ── 5. Wire up Private login flow ─────────────────────────────────────
+            // ── 6. Wire up Private login flow ─────────────────────────────────────
             //   When user taps "🔒 Приватний", MainViewModel fires PrivateLoginRequested.
             //   AppViewModel shows LoginView full-screen; on success/cancel returns to MainView.
             mainVm.PrivateLoginRequested += () =>
                 appVm.ShowPrivateLogin(cryptoSvc, privateDbService, mainVm);
 
-            // ── 6. Wire up platform lifetime ─────────────────────────────────────
+            // ── 7. Wire up platform lifetime ─────────────────────────────────────
             SetupLifetime(appVm);
 
             base.OnFrameworkInitializationCompleted();
@@ -62,36 +65,23 @@ namespace AmberNotes
                 single.MainView = new AppView { DataContext = appVm };
         }
 
-        // ── Database path helpers ─────────────────────────────────────────────────
+        // ── App data folder (all platform-specific databases & tokens) ────────────
 
         /// <summary>
-        /// Path for the unencrypted public database.
-        ///   Desktop  → %LOCALAPPDATA%\AmberNotes\public.db
-        ///   Android  → /data/data/{pkg}/files/public.db
+        /// Root folder for all AmberNotes data files.
+        ///   Desktop  → %LOCALAPPDATA%\AmberNotes\
+        ///   Android  → /data/data/{pkg}/files/AmberNotes\
         /// </summary>
-        private static string GetPublicDatabasePath()
+        private static string GetAppDataFolder()
         {
-            var folder = Environment.GetFolderPath(
+            var root = Environment.GetFolderPath(
                 OperatingSystem.IsAndroid()
                     ? Environment.SpecialFolder.Personal
                     : Environment.SpecialFolder.LocalApplicationData);
 
-            return Path.Combine(folder, "AmberNotes", "public.db");
-        }
-
-        /// <summary>
-        /// Path for the SQLCipher-encrypted private database.
-        ///   Desktop  → %LOCALAPPDATA%\AmberNotes\ambernotes.db
-        ///   Android  → /data/data/{pkg}/files/ambernotes.db
-        /// </summary>
-        private static string GetPrivateDatabasePath()
-        {
-            var folder = Environment.GetFolderPath(
-                OperatingSystem.IsAndroid()
-                    ? Environment.SpecialFolder.Personal
-                    : Environment.SpecialFolder.LocalApplicationData);
-
-            return Path.Combine(folder, "AmberNotes", "ambernotes.db");
+            var folder = Path.Combine(root, "AmberNotes");
+            Directory.CreateDirectory(folder);   // ensure it exists
+            return folder;
         }
     }
 }
