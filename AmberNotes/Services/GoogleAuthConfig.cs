@@ -80,10 +80,10 @@ public static class GoogleAuthConfig
     public static bool IsCurrentPlatformConfigured =>
         OperatingSystem.IsAndroid() ? IsAndroidConfigured : IsDesktopConfigured;
 
-    // ── Loader ────────────────────────────────────────────────────────────────
+    // ── Loaders ───────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Reads OAuth credentials from <paramref name="configFilePath"/>.
+    /// Reads OAuth credentials from a file path (Desktop).
     /// If the file does not exist or is malformed, the properties stay empty
     /// and <see cref="IsCurrentPlatformConfigured"/> returns false — the app
     /// will show a "setup required" hint in Settings instead of crashing.
@@ -95,9 +95,26 @@ public static class GoogleAuthConfig
 
         try
         {
-            var json = File.ReadAllText(configFilePath);
-            var cfg  = JsonSerializer.Deserialize<OAuthConfigFile>(json,
-                           new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            using var stream = File.OpenRead(configFilePath);
+            Load(stream);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[GoogleAuthConfig] Failed to load {configFilePath}: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Reads OAuth credentials from a stream (Android Assets or any other source).
+    /// The stream is read to end and then closed by the caller.
+    /// </summary>
+    public static void Load(Stream stream)
+    {
+        try
+        {
+            var cfg = JsonSerializer.Deserialize<OAuthConfigFile>(stream,
+                          new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
             if (cfg is null) return;
 
@@ -114,7 +131,7 @@ public static class GoogleAuthConfig
         {
             // Non-fatal: app continues without Google Drive support.
             System.Diagnostics.Debug.WriteLine(
-                $"[GoogleAuthConfig] Failed to load {configFilePath}: {ex.Message}");
+                $"[GoogleAuthConfig] Failed to load config from stream: {ex.Message}");
         }
     }
 

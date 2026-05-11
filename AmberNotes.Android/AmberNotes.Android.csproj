@@ -4,7 +4,7 @@
     <TargetFramework>net10.0-android</TargetFramework>
     <SupportedOSPlatformVersion>23</SupportedOSPlatformVersion>
     <Nullable>enable</Nullable>
-    <ApplicationId>com.kozak.AmberNotes</ApplicationId>
+    <ApplicationId>com.kozak.ambernotes</ApplicationId>
     <ApplicationVersion>1</ApplicationVersion>
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
     <AndroidPackageFormat>apk</AndroidPackageFormat>
@@ -26,4 +26,11 @@
   <ItemGroup>
     <ProjectReference Include="..\AmberNotes\AmberNotes.csproj" />
   </ItemGroup>
+
+  <!-- Bundle oauth.config.json as an Android asset (loaded from Assets in Application.cs). -->
+  <!-- The file is gitignored; without it the app runs fine but Google Drive is disabled.  -->
+  <ItemGroup Condition="Exists('..\oauth.config.json')">
+    <AndroidAsset Include="..\oauth.config.json" />
+  </ItemGroup>
+
 </Project>

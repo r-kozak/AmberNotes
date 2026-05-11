@@ -6,6 +6,7 @@ using Avalonia;
 using Avalonia.Android;
 using SQLitePCL;
 using System.Threading.Tasks;
+using System.IO;
 
 namespace AmberNotes.Android
 {
@@ -20,7 +21,20 @@ namespace AmberNotes.Android
             // ── 1. SQLitePCLRaw must be initialized before any SQLite usage ──
             Batteries_V2.Init();
 
-            // ── 2. Register Android-specific OAuth browser launcher ───────────
+            // ── 2. Load OAuth config from bundled asset (oauth.config.json) ──
+            //   On Android, AppContext.BaseDirectory is inside the APK (read-only),
+            //   so we read the file via Android Assets API instead.
+            try
+            {
+                using var stream = Assets!.Open(GoogleAuthConfig.ConfigFileName);
+                GoogleAuthConfig.Load(stream);
+            }
+            catch
+            {
+                // File absent → Google Drive stays disabled (ShowSetupHint = true in Settings).
+            }
+
+            // ── 3. Register Android-specific OAuth browser launcher ───────────
             //   Opens the system default browser (or Chrome) with the Google
             //   authorization URL. The user is redirected back via the custom
             //   URI scheme com.kozak.ambernotes://oauth2callback which is

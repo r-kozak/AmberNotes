@@ -1,5 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:installLocation="auto">
+﻿<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:installLocation="auto" package="com.kozak.ambernotes">
 	<uses-permission android:name="android.permission.INTERNET" />
 	<application android:label="AmberNotes" android:icon="@drawable/Icon">
 		<!--
@@ -8,17 +8,12 @@
 		    Android routes the intent to MainActivity (launchMode=singleTop so
 		    OnNewIntent is called instead of creating a new instance).
 		-->
-		<activity
-			android:name="ambernotesandroid.MainActivity"
-			android:launchMode="singleTop"
-			android:exported="true">
+		<activity android:name="ambernotesandroid.MainActivity" android:launchMode="singleTop" android:exported="true">
 			<intent-filter android:label="OAuth2 Callback">
 				<action android:name="android.intent.action.VIEW" />
 				<category android:name="android.intent.category.DEFAULT" />
 				<category android:name="android.intent.category.BROWSABLE" />
-				<data
-					android:scheme="com.kozak.ambernotes"
-					android:host="oauth2callback" />
+				<data android:scheme="com.kozak.ambernotes" android:host="oauth2callback" />
 			</intent-filter>
 		</activity>
 	</application>
