@@ -91,6 +91,12 @@ MainWindow / AppView
 - [x] **Крок 24: SettingsView.** `SettingsViewModel.cs` + `SettingsView.axaml` — підключення/відключення Google Drive, статус з'єднання, підказки налаштування Cloud Console, тематизація.
 - [x] **Крок 25: Navigation Integration.** `MainViewModel.GoToSettingsCommand`, `AppViewModel.SwitchToMain` оновлено з `GoogleDriveService`. ⚙ кнопка в тулбарі `MainView`. `App.axaml` DataTemplate. `App.axaml.cs` — створення + передача сервісів.
 
+**Поточна версія:** v0.6: Sync Foundation & Security Management
+- [ ] **Крок 26: Міграція Бази Даних**
+- [ ] **Крок 27: Криптографічний "Якір" (Salt Sync)**
+- [ ] **Крок 28: Сервіс синхронізації (Encrypted Gateway)**
+- [ ] **Крок 29: Функція зміни Майстер-пароля (Settings)**
+- [ ] **Крок 30: Інтеграція в UI (Single-Window)**
 
 ## Журнал сесій (Session Log)
 ### 2026-05-03 — Ініціалізація проєкту
@@ -283,4 +289,6 @@ MainWindow / AppView
 
 - **Результат:** `dotnet build AmberNotes.Desktop` — **succeeded** ✅ (0 помилок)
 - **Статус v0.5:** ЗАВЕРШЕНО ✅
+
+### Наступний крок: версія 0.6: кроки 26-30.
 
