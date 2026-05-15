@@ -141,9 +141,13 @@ public class CryptoService
 
     private static string DeriveKeyCore(string password, byte[] salt)
     {
-        var keyBytes = Rfc2898DeriveBytes.Pbkdf2(
+        var derivedKey = Rfc2898DeriveBytes.Pbkdf2(
             password, salt, Iterations, HashAlgorithmName.SHA256, KeySizeBytes);
-        return Convert.ToHexString(keyBytes).ToLowerInvariant();
+
+        // Виведіть це в консоль або лог під час запуску
+        System.Diagnostics.Debug.WriteLine($"DB Hex Key: 0x{BitConverter.ToString(derivedKey).Replace("-", "")}");
+
+        return Convert.ToHexString(derivedKey).ToLowerInvariant();
     }
 
     private byte[] LoadOrCreateSalt()
