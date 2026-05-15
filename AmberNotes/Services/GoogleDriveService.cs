@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,8 +15,8 @@ namespace AmberNotes.Services;
 /// Scope: drive.appdata — the hidden per-app folder in Google Drive.
 /// The user's personal files are completely inaccessible to the app.
 ///
-/// v0.5: Authentication + connection test only.
-/// v0.6: Will add UploadBackupAsync / DownloadBackupAsync / ListBackupsAsync.
+/// v0.5: Authentication + connection test.
+/// v0.6: Salt CRUD, encrypted note upload/download, file listing, deletion.
 /// </summary>
 public class GoogleDriveService : ICloudStorageService
 {
@@ -22,10 +25,13 @@ public class GoogleDriveService : ICloudStorageService
 
     private static readonly HttpClient _http = new();
 
-    // Google Drive REST API — appDataFolder operations
-    private const string FilesEndpoint =
-        "https://www.googleapis.com/drive/v3/files" +
-        "?spaces=appDataFolder&fields=files(id,name,modifiedTime)&pageSize=10";
+    // ── Drive API constants ───────────────────────────────────────────────────
+    private const string DriveFilesBase   = "https://www.googleapis.com/drive/v3/files";
+    private const string DriveUploadBase  = "https://www.googleapis.com/upload/drive/v3/files";
+    private const string AppDataFolderSpace = "appDataFolder";
+    private const string SaltFileName    = "ambernotes.salt";
+    public  const string NoteFilePrefix  = "note";
+    public  const string NoteFileExt     = ".json.enc";
 
     // ── ICloudStorageService ──────────────────────────────────────────────────
 
@@ -36,61 +42,263 @@ public class GoogleDriveService : ICloudStorageService
 
     public GoogleDriveService(GoogleAuthService authService)
     {
-        _auth = authService;
-
-        // Restore tokens persisted during a previous session
+        _auth   = authService;
         _tokens = _auth.LoadTokens();
     }
 
-    // ── Connect / Disconnect ──────────────────────────────────────────────────
+    // ── Auth ──────────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Launches the OAuth browser flow and, on success, stores the tokens.
-    /// </summary>
     public async Task<bool> ConnectAsync(CancellationToken ct = default)
     {
         _tokens = await _auth.SignInAsync(ct);
         return IsConnected;
     }
 
-    /// <summary>
-    /// Revokes the token on Google's servers, clears local storage.
-    /// </summary>
     public async Task DisconnectAsync()
     {
         if (_tokens is not null)
             await _auth.RevokeAndClearAsync(_tokens);
-
         _tokens = null;
     }
 
-    // ── Connection test ───────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Calls the Drive Files API to list up to 10 items in appDataFolder.
-    /// A 200 response confirms that authentication and scope are valid.
-    /// Auto-refreshes the access token when it is about to expire.
-    /// </summary>
     public async Task<bool> TestConnectionAsync(CancellationToken ct = default)
     {
         if (!IsConnected) return false;
-
-        if (_tokens!.IsExpired)
-        {
-            _tokens = await _auth.RefreshAsync(_tokens, ct);
-            if (_tokens is null) return false;
-        }
-
+        await EnsureTokenFreshAsync(ct);
         try
         {
-            using var req = BuildRequest(HttpMethod.Get, FilesEndpoint);
+            var url = $"{DriveFilesBase}?spaces={AppDataFolderSpace}&pageSize=1&fields=files(id)";
+            using var req  = BuildRequest(HttpMethod.Get, url);
             using var resp = await _http.SendAsync(req, ct);
             return resp.IsSuccessStatusCode;
         }
         catch { return false; }
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // ── Salt file operations ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// Downloads the cloud salt file. Returns null if not found.
+    /// </summary>
+    public async Task<byte[]?> DownloadSaltAsync(CancellationToken ct = default)
+    {
+        await EnsureTokenFreshAsync(ct);
+        var fileId = await FindFileIdAsync(SaltFileName, ct);
+        if (fileId is null) return null;
+        return await DownloadFileAsync(fileId, ct);
+    }
+
+    /// <summary>
+    /// Uploads (creates or replaces) the salt file in appDataFolder.
+    /// </summary>
+    public async Task UploadSaltAsync(byte[] saltBytes, CancellationToken ct = default)
+    {
+        await EnsureTokenFreshAsync(ct);
+        var existingId = await FindFileIdAsync(SaltFileName, ct);
+        if (existingId is not null)
+            await UpdateFileAsync(existingId, saltBytes, ct);
+        else
+            await CreateFileAsync(SaltFileName, saltBytes, "application/octet-stream", ct);
+    }
+
+    /// <summary>
+    /// Deletes the salt file from Drive if it exists.
+    /// </summary>
+    public async Task DeleteSaltAsync(CancellationToken ct = default)
+    {
+        await EnsureTokenFreshAsync(ct);
+        var fileId = await FindFileIdAsync(SaltFileName, ct);
+        if (fileId is not null)
+            await DeleteFileByIdAsync(fileId, ct);
+    }
+
+    // ── Encrypted note file operations ────────────────────────────────────────
+
+    /// <summary>
+    /// Uploads an encrypted note file.
+    /// Name format: <c>note{UUID}.json.enc</c>
+    /// </summary>
+    public async Task UploadNoteFileAsync(string noteId, byte[] encryptedData, CancellationToken ct = default)
+    {
+        await EnsureTokenFreshAsync(ct);
+        var name       = $"{NoteFilePrefix}{noteId}{NoteFileExt}";
+        var existingId = await FindFileIdAsync(name, ct);
+        if (existingId is not null)
+            await UpdateFileAsync(existingId, encryptedData, ct);
+        else
+            await CreateFileAsync(name, encryptedData, "application/octet-stream", ct);
+    }
+
+    /// <summary>
+    /// Downloads an encrypted note file by note UUID. Returns null if not found.
+    /// </summary>
+    public async Task<byte[]?> DownloadNoteFileAsync(string noteId, CancellationToken ct = default)
+    {
+        await EnsureTokenFreshAsync(ct);
+        var name   = $"{NoteFilePrefix}{noteId}{NoteFileExt}";
+        var fileId = await FindFileIdAsync(name, ct);
+        if (fileId is null) return null;
+        return await DownloadFileAsync(fileId, ct);
+    }
+
+    /// <summary>
+    /// Deletes a single encrypted note file by note UUID.
+    /// </summary>
+    public async Task DeleteNoteFileAsync(string noteId, CancellationToken ct = default)
+    {
+        await EnsureTokenFreshAsync(ct);
+        var name   = $"{NoteFilePrefix}{noteId}{NoteFileExt}";
+        var fileId = await FindFileIdAsync(name, ct);
+        if (fileId is not null)
+            await DeleteFileByIdAsync(fileId, ct);
+    }
+
+    /// <summary>
+    /// Lists ALL encrypted note files in appDataFolder (handles nextPageToken pagination).
+    /// Returns a list of (driveFileId, noteId) pairs.
+    /// </summary>
+    public async Task<List<(string DriveId, string NoteId)>> ListNoteFilesAsync(CancellationToken ct = default)
+    {
+        await EnsureTokenFreshAsync(ct);
+        var result    = new List<(string, string)>();
+        string? token = null;
+
+        do
+        {
+            var url = $"{DriveFilesBase}?spaces={AppDataFolderSpace}" +
+                      $"&q=name+contains+%27{NoteFilePrefix}%27" +
+                      $"&fields=nextPageToken,files(id,name)" +
+                      $"&pageSize=100" +
+                      (token is not null ? $"&pageToken={Uri.EscapeDataString(token)}" : "");
+
+            using var req  = BuildRequest(HttpMethod.Get, url);
+            using var resp = await _http.SendAsync(req, ct);
+            resp.EnsureSuccessStatusCode();
+
+            var json = await resp.Content.ReadAsStringAsync(ct);
+            var doc  = JsonDocument.Parse(json);
+
+            if (doc.RootElement.TryGetProperty("files", out var files))
+                foreach (var file in files.EnumerateArray())
+                {
+                    var driveId = file.GetProperty("id").GetString() ?? "";
+                    var name    = file.GetProperty("name").GetString() ?? "";
+                    if (name.StartsWith(NoteFilePrefix) && name.EndsWith(NoteFileExt))
+                    {
+                        var noteId = name[NoteFilePrefix.Length..^NoteFileExt.Length];
+                        result.Add((driveId, noteId));
+                    }
+                }
+
+            token = doc.RootElement.TryGetProperty("nextPageToken", out var nt)
+                    ? nt.GetString()
+                    : null;
+
+        } while (token is not null);
+
+        return result;
+    }
+
+    /// <summary>
+    /// Deletes ALL encrypted note files from appDataFolder.
+    /// Used for Hard Reset and Cloud Wipe operations.
+    /// </summary>
+    public async Task DeleteAllEncryptedNotesAsync(CancellationToken ct = default)
+    {
+        var files = await ListNoteFilesAsync(ct);
+        foreach (var (driveId, _) in files)
+        {
+            try { await DeleteFileByIdAsync(driveId, ct); }
+            catch { /* best-effort per file */ }
+        }
+    }
+
+    // ── Low-level Drive helpers ───────────────────────────────────────────────
+
+    /// <summary>Finds the Drive file ID for the given filename, or null.</summary>
+    private async Task<string?> FindFileIdAsync(string name, CancellationToken ct)
+    {
+        var encodedName = Uri.EscapeDataString($"name = '{name}'");
+        var url = $"{DriveFilesBase}?spaces={AppDataFolderSpace}" +
+                  $"&q={encodedName}" +
+                  $"&fields=files(id)&pageSize=1";
+
+        using var req  = BuildRequest(HttpMethod.Get, url);
+        using var resp = await _http.SendAsync(req, ct);
+        resp.EnsureSuccessStatusCode();
+
+        var json = await resp.Content.ReadAsStringAsync(ct);
+        var doc  = JsonDocument.Parse(json);
+
+        if (doc.RootElement.TryGetProperty("files", out var files))
+            foreach (var file in files.EnumerateArray())
+                if (file.TryGetProperty("id", out var id))
+                    return id.GetString();
+
+        return null;
+    }
+
+    /// <summary>Downloads a file by Drive file ID.</summary>
+    private async Task<byte[]> DownloadFileAsync(string driveFileId, CancellationToken ct)
+    {
+        var url = $"{DriveFilesBase}/{driveFileId}?alt=media";
+        using var req  = BuildRequest(HttpMethod.Get, url);
+        using var resp = await _http.SendAsync(req, ct);
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadAsByteArrayAsync(ct);
+    }
+
+    /// <summary>Creates a new file in appDataFolder using multipart upload.</summary>
+    private async Task CreateFileAsync(string name, byte[] data, string mimeType, CancellationToken ct)
+    {
+        var url = $"{DriveUploadBase}?uploadType=multipart&spaces={AppDataFolderSpace}";
+
+        var metadataJson = JsonSerializer.Serialize(new
+        {
+            name,
+            parents = new[] { AppDataFolderSpace }
+        });
+
+        using var content = new MultipartContent("related");
+        var metaPart = new StringContent(metadataJson, Encoding.UTF8, "application/json");
+        content.Add(metaPart);
+        var dataPart = new ByteArrayContent(data);
+        dataPart.Headers.ContentType = new MediaTypeHeaderValue(mimeType);
+        content.Add(dataPart);
+
+        using var req  = BuildRequest(HttpMethod.Post, url);
+        req.Content    = content;
+        using var resp = await _http.SendAsync(req, ct);
+        resp.EnsureSuccessStatusCode();
+    }
+
+    /// <summary>Updates the content of an existing Drive file.</summary>
+    private async Task UpdateFileAsync(string driveFileId, byte[] data, CancellationToken ct)
+    {
+        var url = $"{DriveUploadBase}/{driveFileId}?uploadType=media";
+        using var req  = BuildRequest(HttpMethod.Patch, url);
+        req.Content    = new ByteArrayContent(data);
+        req.Content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+        using var resp = await _http.SendAsync(req, ct);
+        resp.EnsureSuccessStatusCode();
+    }
+
+    /// <summary>Permanently deletes a Drive file by its ID.</summary>
+    private async Task DeleteFileByIdAsync(string driveFileId, CancellationToken ct)
+    {
+        var url = $"{DriveFilesBase}/{driveFileId}";
+        using var req  = BuildRequest(HttpMethod.Delete, url);
+        using var resp = await _http.SendAsync(req, ct);
+        // 204 No Content = success; 404 = already deleted — both are acceptable
+        if (resp.StatusCode != System.Net.HttpStatusCode.NotFound)
+            resp.EnsureSuccessStatusCode();
+    }
+
+    private async Task EnsureTokenFreshAsync(CancellationToken ct)
+    {
+        if (_tokens?.IsExpired == true)
+            _tokens = await _auth.RefreshAsync(_tokens, ct);
+    }
 
     private HttpRequestMessage BuildRequest(HttpMethod method, string url)
     {

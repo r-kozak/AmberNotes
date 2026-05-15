@@ -93,7 +93,7 @@ MainWindow / AppView
 
 **Поточна версія:** v0.6: Sync Foundation & Security Management
 - [x] **Крок 26: Міграція Бази Даних** ✅
-- [ ] **Крок 27: Криптографічний "Якір" (Salt Sync)**
+- [x] **Крок 27: Криптографічний "Якір" (Salt Sync)** ✅
 - [ ] **Крок 28: Сервіс синхронізації (Encrypted Gateway)**
 - [ ] **Крок 29: Функція зміни Майстер-пароля (Settings)**
 - [ ] **Крок 30: Інтеграція в UI (Single-Window)**
@@ -321,6 +321,41 @@ MainWindow / AppView
   - `NoteEditViewModel.cs` — `int? _noteId` → `string? _noteId`, `FindBookById(string id)`.
   - `MainListViewModel.cs` — `Action<int?>` / `Action<int>` → `Action<string?>` / `Action<string>`.
   - `MainViewModel.cs` — `GoToEditor(string? noteId)`.
+
+- **Результат:** `dotnet build AmberNotes.Desktop` — **succeeded** ✅ (0 помилок, 0 попереджень)
+
+### 2026-05-15 — Крок 27: Криптографічний "Якір" (Salt Sync) (v0.6)
+
+- **Мета:** Перший раз при підключенні Google Drive синхронізувати `ambernotes.salt` між локальним сховищем та хмарою. Виявляти конфліктні ситуації (різні паролі з різних пристроїв) та надати UI для вирішення.
+
+- **Нові файли (Services/):**
+  - `AppSettingsService.cs` — зберігає малі прапорці застосунку в `app_settings.json`. Поточні поля: `PendingCloudWipe` (встановлюється при зміні пароля офлайн). Автозавантаження у конструкторі, автозбереження при зміні.
+  - `SaltSyncService.cs` — основна логіка "якоря":
+    - `DetectConflictAsync()` — порівнює локальний salt з хмарним. Варіанти: немає хмарного → завантажити локальний; однакові → нічого; різні → повернути `SaltConflictInfo`. Якщо `PendingCloudWipe=true` → пропустити перевірку.
+    - `ResolveConflictAsync(choice, cloudSalt, cloudPassword?)` — виконує обрану дію.
+    - 3 стратегії: **UseCloudPassword** (заміна локального ключа; `PRAGMA rekey` якщо сховище відкрите); **KeepLocalPassword** (перезапис хмарного salt локальним); **HardReset** (видалення всіх хмарних нотаток + Salt, перезавантаження локального).
+  - Також оновлено `CryptoService.cs` (попередня сесія): `GetSaltBytes()`, `ReplaceSaltFromBytes()`, `DeriveKeyFromSalt()`, `GenerateNewSaltAndDeriveKey()`, `EncryptAesGcm()`, `DecryptAesGcm()` (AES-256-GCM, nonce+ciphertext+tag).
+  - Також оновлено `GoogleDriveService.cs` (попередня сесія): `DownloadSaltAsync/UploadSaltAsync/DeleteSaltAsync`, `UploadNoteFileAsync/DownloadNoteFileAsync/DeleteNoteFileAsync`, `ListNoteFilesAsync` (nextPageToken loop), `DeleteAllEncryptedNotesAsync`.
+  - Також оновлено `DatabaseService.cs` (попередня сесія): `IsUnlocked` property, `Rekey(newHexKey)` — `PRAGMA rekey`.
+
+- **Нові файли (ViewModels/):**
+  - `SaltConflictViewModel.cs` — overlay VM для вибору варіанту: `SelectedOption` (1/2/3), `IsOption1/2/3Selected`, `ShowPasswordField` (опція 1 потребує пароль), `CloudPassword`, `ConfirmCommand` (CanExecute: не зайнятий + якщо опція 1 то пароль не порожній), `CancelCommand`. Events: `Resolved`, `Cancelled`.
+
+- **Нові файли (Views/):**
+  - `SaltConflictView.axaml` / `.cs` — overlay з трьома картками-опціями з radio-dot індикаторами. Опція 3 (Hard Reset) має небезпечний стиль (червоний фон `#1AFF4444`). Пароль-поле з'являється лише для опції 1.
+
+- **Оновлені файли:**
+  - `SettingsViewModel.cs` — конструктор отримує `SaltSyncService saltSync`. Після успішного Connect: викликає `DetectConflictAsync()`. Якщо `IsLocalEmpty=true` → авто-приймає хмарний ключ без діалогу. Якщо конфлікт → встановлює `ConflictViewModel` для overlay. Нова властивість: `ConflictViewModel? / IsConflictVisible`.
+  - `SettingsView.axaml` — обгорнуто в `Grid`. Додано Layer 1: `Grid` з `ZIndex=10`, `Background="#CC000000"` (напівпрозорий затемнений фон) + `ContentControl Content={Binding ConflictViewModel}` з локальним `DataTemplate`.
+  - `MainViewModel.cs` — +параметр `SaltSyncService`, передається у `SettingsViewModel`.
+  - `AppViewModel.cs` — `SwitchToMain` +параметр `SaltSyncService`.
+  - `App.axaml.cs` — створює `AppSettingsService` + `SaltSyncService`, передає у ланцюгу.
+
+- **Виправлення UX (в тій самій сесії):**
+  - UX-копірайтинг `SaltConflictView.axaml` приведено у відповідність до ТЗ: "Знайдено дані з іншого пристрою" / "Ваші нотатки в хмарі захищені іншим паролем" / назви кнопок-опцій з ТЗ.
+  - Option 2 теж отримала поле пароля (для майбутнього Pull у Кроці 28): `ShowPasswordField => SelectedOption == 1 || SelectedOption == 2`.
+  - `IsEmptyVaultMode` property у `SaltConflictViewModel` + conditional XAML: при порожній локальній базі діалог показує лише Option 1 із спрощеним заголовком "Введіть пароль від хмарного сховища" (Options 2 і 3 сховані через `IsVisible="{Binding !IsEmptyVaultMode}"`).
+  - `SettingsViewModel`: для `IsLocalEmpty=true` тепер так само показує діалог (не авто-резолюція) — ТЗ вимагає "відразу покажи UI із запитом пароля".
 
 - **Результат:** `dotnet build AmberNotes.Desktop` — **succeeded** ✅ (0 помилок, 0 попереджень)
 

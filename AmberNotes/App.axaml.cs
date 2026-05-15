@@ -34,25 +34,37 @@ namespace AmberNotes
             var cryptoSvc        = new CryptoService(appDataFolder);
             var privateDbService = new DatabaseService(Path.Combine(appDataFolder, "ambernotes.db"));
 
-            // ── 4. Google Drive service (loads persisted tokens automatically) ────
-            // Config file lives next to the executable (copied from project root by .csproj).
-            // Falls back silently if not found — app runs without Google Drive.
-            GoogleAuthConfig.Load(Path.Combine(AppContext.BaseDirectory, GoogleAuthConfig.ConfigFileName));
-            var googleAuthSvc  = new GoogleAuthService(appDataFolder);
-            var googleDriveSvc = new GoogleDriveService(googleAuthSvc);
+        // ── 4. Google Drive service (loads persisted tokens automatically) ────
+        // Config file lives next to the executable (copied from project root by .csproj).
+        // Falls back silently if not found — app runs without Google Drive.
+        GoogleAuthConfig.Load(Path.Combine(AppContext.BaseDirectory, GoogleAuthConfig.ConfigFileName));
+        var googleAuthSvc  = new GoogleAuthService(appDataFolder);
+        var googleDriveSvc = new GoogleDriveService(googleAuthSvc);
 
-            // ── 5. Always start in Public mode — no Login screen at startup ───────
-            var appVm  = new AppViewModel();
-            var mainVm = appVm.SwitchToMain(publicNoteRepo, publicBookRepo,
-                                            privateDbService, cryptoSvc, googleDriveSvc);
+        // ── 5. App settings (PendingCloudWipe flag etc.) ──────────────────────
+        var appSettingsSvc = new AppSettingsService(appDataFolder);
 
-            // ── 6. Wire up Private login flow ─────────────────────────────────────
+        // ── 6. Salt sync service (crypto anchor ↔ Google Drive) ──────────────
+        var saltSyncSvc = new SaltSyncService(
+            cryptoSvc,
+            googleDriveSvc,
+            privateDbService,
+            appSettingsSvc,
+            publicNoteRepo);
+
+        // ── 7. Always start in Public mode — no Login screen at startup ───────
+        var appVm  = new AppViewModel();
+        var mainVm = appVm.SwitchToMain(publicNoteRepo, publicBookRepo,
+                                        privateDbService, cryptoSvc,
+                                        googleDriveSvc, saltSyncSvc);
+
+            // ── 8. Wire up Private login flow ─────────────────────────────────────
             //   When user taps "🔒 Приватний", MainViewModel fires PrivateLoginRequested.
             //   AppViewModel shows LoginView full-screen; on success/cancel returns to MainView.
             mainVm.PrivateLoginRequested += () =>
                 appVm.ShowPrivateLogin(cryptoSvc, privateDbService, mainVm);
 
-            // ── 7. Wire up platform lifetime ─────────────────────────────────────
+            // ── 9. Wire up platform lifetime ──────────────────────────────────────
             SetupLifetime(appVm);
 
             base.OnFrameworkInitializationCompleted();

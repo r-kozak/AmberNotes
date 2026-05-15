@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:AmberNotes.ViewModels"
+             xmlns:views="using:AmberNotes.Views"
              mc:Ignorable="d" d:DesignWidth="820" d:DesignHeight="580"
              x:Class="AmberNotes.Views.SettingsView"
              x:DataType="vm:SettingsViewModel"
@@ -10,239 +11,256 @@
 
   <!--
     ═══════════════════════════════════════════════════════════════════════
-    SettingsView — Settings Page (v0.5)
+    SettingsView — Settings Page (v0.6)
 
     Shown as CurrentPage inside MainView's TransitioningContentControl.
     Layout:
-      [Header] ← Назад | Налаштування
-      [Card 1] Google Drive — connect / disconnect / test
-      [Card 2] Setup instructions (visible only when Client IDs not configured)
-
-    All colours via DynamicResource → Amber Noir / Saffron Linen themes.
+      Layer 0 (normal): ScrollViewer → settings content
+      Layer 1 (overlay): Conflict resolution dialog (when ConflictViewModel ≠ null)
     ═══════════════════════════════════════════════════════════════════════
   -->
 
-  <ScrollViewer VerticalScrollBarVisibility="Auto">
-    <StackPanel MaxWidth="600"
-                HorizontalAlignment="Center"
-                Margin="24,0,24,32"
-                Spacing="0">
+  <Grid>
 
-      <!-- ═══════════ HEADER ═════════════════════════════════════════════ -->
-      <StackPanel Orientation="Horizontal"
-                  Spacing="16"
-                  Margin="0,28,0,28">
+    <!-- ══ Layer 0: Normal settings content ════════════════════════════ -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <StackPanel MaxWidth="600"
+                  HorizontalAlignment="Center"
+                  Margin="24,0,24,32"
+                  Spacing="0">
 
-        <!-- Back button -->
-        <Button Content="← Назад"
-                Command="{Binding GoBackCommand}"
-                Padding="14,8"
-                CornerRadius="8">
-          <Button.Styles>
-            <Style Selector="Button">
-              <Setter Property="Background"    Value="Transparent" />
-              <Setter Property="Foreground"    Value="{DynamicResource AppSubtext}" />
-              <Setter Property="BorderBrush"   Value="{DynamicResource AppBorder}" />
-              <Setter Property="BorderThickness" Value="1" />
-            </Style>
-            <Style Selector="Button:pointerover /template/ ContentPresenter">
-              <Setter Property="Background" Value="{DynamicResource AppSurface}" />
-            </Style>
-          </Button.Styles>
-        </Button>
+        <!-- ═══════════ HEADER ═════════════════════════════════════════ -->
+        <StackPanel Orientation="Horizontal"
+                    Spacing="16"
+                    Margin="0,28,0,28">
 
-        <TextBlock Text="Налаштування"
-                   FontSize="22"
-                   FontWeight="Bold"
-                   Foreground="{DynamicResource AppOnBackground}"
-                   VerticalAlignment="Center" />
-      </StackPanel>
+          <Button Content="← Назад"
+                  Command="{Binding GoBackCommand}"
+                  Padding="14,8"
+                  CornerRadius="8">
+            <Button.Styles>
+              <Style Selector="Button">
+                <Setter Property="Background"    Value="Transparent" />
+                <Setter Property="Foreground"    Value="{DynamicResource AppSubtext}" />
+                <Setter Property="BorderBrush"   Value="{DynamicResource AppBorder}" />
+                <Setter Property="BorderThickness" Value="1" />
+              </Style>
+              <Style Selector="Button:pointerover /template/ ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource AppSurface}" />
+              </Style>
+            </Button.Styles>
+          </Button>
 
-      <!-- ═══════════ GOOGLE DRIVE CARD ══════════════════════════════════ -->
-      <Border Background="{DynamicResource AppSurface}"
-              CornerRadius="12"
-              Padding="24"
-              BorderBrush="{DynamicResource AppBorder}"
-              BorderThickness="1">
-        <StackPanel Spacing="20">
+          <TextBlock Text="Налаштування"
+                     FontSize="22"
+                     FontWeight="Bold"
+                     Foreground="{DynamicResource AppOnBackground}"
+                     VerticalAlignment="Center" />
+        </StackPanel>
 
-          <!-- Section title -->
-          <StackPanel Orientation="Horizontal" Spacing="12">
-            <TextBlock Text="☁"
-                       FontSize="24"
-                       VerticalAlignment="Center" />
-            <StackPanel Spacing="3" VerticalAlignment="Center">
-              <TextBlock Text="Google Drive"
-                         FontSize="16"
-                         FontWeight="SemiBold"
-                         Foreground="{DynamicResource AppOnSurface}" />
-              <TextBlock Text="Приховане резервне копіювання через AppData папку"
-                         FontSize="12"
-                         Foreground="{DynamicResource AppSubtext}" />
-            </StackPanel>
-          </StackPanel>
+        <!-- ═══════════ GOOGLE DRIVE CARD ══════════════════════════════ -->
+        <Border Background="{DynamicResource AppSurface}"
+                CornerRadius="12"
+                Padding="24"
+                BorderBrush="{DynamicResource AppBorder}"
+                BorderThickness="1">
+          <StackPanel Spacing="20">
 
-          <!-- Divider -->
-          <Border Height="1"
-                  Background="{DynamicResource AppDivider}" />
-
-          <!-- Status chip -->
-          <Border CornerRadius="8"
-                  Padding="14,10"
-                  Background="{DynamicResource AppSurfaceVariant}">
-            <StackPanel Orientation="Horizontal" Spacing="10">
-              <TextBlock Text="{Binding StatusIcon}"
-                         FontSize="15"
+            <!-- Section title -->
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <TextBlock Text="☁"
+                         FontSize="24"
                          VerticalAlignment="Center" />
-              <TextBlock Text="{Binding StatusText}"
-                         FontSize="14"
-                         FontWeight="Medium"
-                         Foreground="{DynamicResource AppOnSurface}"
-                         VerticalAlignment="Center" />
-              <!-- Email: shown only when connected -->
-              <Border CornerRadius="5"
-                      Padding="8,3"
-                      Background="{DynamicResource AppBackground}"
-                      IsVisible="{Binding IsGoogleConnected}"
-                      VerticalAlignment="Center">
-                <TextBlock Text="{Binding GoogleEmail}"
+              <StackPanel Spacing="3" VerticalAlignment="Center">
+                <TextBlock Text="Google Drive"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource AppOnSurface}" />
+                <TextBlock Text="Приховане резервне копіювання через AppData папку"
                            FontSize="12"
                            Foreground="{DynamicResource AppSubtext}" />
-              </Border>
+              </StackPanel>
             </StackPanel>
-          </Border>
 
-          <!-- Progress bar (visible during async operations) -->
-          <ProgressBar IsIndeterminate="True"
-                       Height="3"
-                       IsVisible="{Binding IsBusy}"
-                       Foreground="{DynamicResource AppPrimary}"
-                       Background="Transparent" />
+            <!-- Divider -->
+            <Border Height="1"
+                    Background="{DynamicResource AppDivider}" />
 
-          <!-- Status message -->
-          <Border CornerRadius="8"
-                  Padding="14,10"
-                  Background="{DynamicResource AppSurfaceVariant}"
-                  IsVisible="{Binding HasStatusMessage}">
-            <TextBlock Text="{Binding StatusMessage}"
-                       TextWrapping="Wrap"
-                       FontSize="13"
-                       Foreground="{DynamicResource AppSubtext}" />
-          </Border>
+            <!-- Status chip -->
+            <Border CornerRadius="8"
+                    Padding="14,10"
+                    Background="{DynamicResource AppSurfaceVariant}">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBlock Text="{Binding StatusIcon}"
+                           FontSize="15"
+                           VerticalAlignment="Center" />
+                <TextBlock Text="{Binding StatusText}"
+                           FontSize="14"
+                           FontWeight="Medium"
+                           Foreground="{DynamicResource AppOnSurface}"
+                           VerticalAlignment="Center" />
+                <Border CornerRadius="5"
+                        Padding="8,3"
+                        Background="{DynamicResource AppBackground}"
+                        IsVisible="{Binding IsGoogleConnected}"
+                        VerticalAlignment="Center">
+                  <TextBlock Text="{Binding GoogleEmail}"
+                             FontSize="12"
+                             Foreground="{DynamicResource AppSubtext}" />
+                </Border>
+              </StackPanel>
+            </Border>
 
-          <!-- Action buttons -->
-          <StackPanel Orientation="Horizontal" Spacing="12">
+            <!-- Progress bar (visible during async operations) -->
+            <ProgressBar IsIndeterminate="True"
+                         Height="3"
+                         IsVisible="{Binding IsBusy}"
+                         Foreground="{DynamicResource AppPrimary}"
+                         Background="Transparent" />
 
-            <!-- Connect / Disconnect (primary accent button) -->
-            <Button Content="{Binding ConnectButtonText}"
-                    Command="{Binding ToggleGoogleDriveCommand}"
-                    IsEnabled="{Binding IsNotBusy}"
-                    Padding="18,10"
-                    CornerRadius="8">
-              <Button.Styles>
-                <Style Selector="Button">
-                  <Setter Property="Background"    Value="{DynamicResource AppPrimary}" />
-                  <Setter Property="Foreground"    Value="{DynamicResource AppOnPrimary}" />
-                  <Setter Property="BorderThickness" Value="0" />
-                  <Setter Property="FontWeight"    Value="SemiBold" />
-                </Style>
-                <Style Selector="Button:pointerover /template/ ContentPresenter">
-                  <Setter Property="Opacity" Value="0.85" />
-                </Style>
-                <Style Selector="Button:pressed /template/ ContentPresenter">
-                  <Setter Property="Opacity" Value="0.70" />
-                </Style>
-                <Style Selector="Button:disabled /template/ ContentPresenter">
-                  <Setter Property="Opacity" Value="0.45" />
-                </Style>
-              </Button.Styles>
-            </Button>
+            <!-- Status message -->
+            <Border CornerRadius="8"
+                    Padding="14,10"
+                    Background="{DynamicResource AppSurfaceVariant}"
+                    IsVisible="{Binding HasStatusMessage}">
+              <TextBlock Text="{Binding StatusMessage}"
+                         TextWrapping="Wrap"
+                         FontSize="13"
+                         Foreground="{DynamicResource AppSubtext}" />
+            </Border>
 
-            <!-- Test connection (outline button, shown only when connected) -->
-            <Button Content="Перевірити з'єднання"
-                    Command="{Binding TestConnectionCommand}"
-                    IsVisible="{Binding IsGoogleConnected}"
-                    IsEnabled="{Binding IsNotBusy}"
-                    Padding="18,10"
-                    CornerRadius="8">
-              <Button.Styles>
-                <Style Selector="Button">
-                  <Setter Property="Background"    Value="Transparent" />
-                  <Setter Property="Foreground"    Value="{DynamicResource AppPrimary}" />
-                  <Setter Property="BorderBrush"   Value="{DynamicResource AppPrimary}" />
-                  <Setter Property="BorderThickness" Value="1" />
-                  <Setter Property="FontWeight"    Value="Medium" />
-                </Style>
-                <Style Selector="Button:pointerover /template/ ContentPresenter">
-                  <Setter Property="Background" Value="{DynamicResource AppSurfaceVariant}" />
-                </Style>
-                <Style Selector="Button:disabled /template/ ContentPresenter">
-                  <Setter Property="Opacity" Value="0.45" />
-                </Style>
-              </Button.Styles>
-            </Button>
+            <!-- Action buttons -->
+            <StackPanel Orientation="Horizontal" Spacing="12">
+
+              <Button Content="{Binding ConnectButtonText}"
+                      Command="{Binding ToggleGoogleDriveCommand}"
+                      IsEnabled="{Binding IsNotBusy}"
+                      Padding="18,10"
+                      CornerRadius="8">
+                <Button.Styles>
+                  <Style Selector="Button">
+                    <Setter Property="Background"    Value="{DynamicResource AppPrimary}" />
+                    <Setter Property="Foreground"    Value="{DynamicResource AppOnPrimary}" />
+                    <Setter Property="BorderThickness" Value="0" />
+                    <Setter Property="FontWeight"    Value="SemiBold" />
+                  </Style>
+                  <Style Selector="Button:pointerover /template/ ContentPresenter">
+                    <Setter Property="Opacity" Value="0.85" />
+                  </Style>
+                  <Style Selector="Button:pressed /template/ ContentPresenter">
+                    <Setter Property="Opacity" Value="0.70" />
+                  </Style>
+                  <Style Selector="Button:disabled /template/ ContentPresenter">
+                    <Setter Property="Opacity" Value="0.45" />
+                  </Style>
+                </Button.Styles>
+              </Button>
+
+              <Button Content="Перевірити з'єднання"
+                      Command="{Binding TestConnectionCommand}"
+                      IsVisible="{Binding IsGoogleConnected}"
+                      IsEnabled="{Binding IsNotBusy}"
+                      Padding="18,10"
+                      CornerRadius="8">
+                <Button.Styles>
+                  <Style Selector="Button">
+                    <Setter Property="Background"    Value="Transparent" />
+                    <Setter Property="Foreground"    Value="{DynamicResource AppPrimary}" />
+                    <Setter Property="BorderBrush"   Value="{DynamicResource AppPrimary}" />
+                    <Setter Property="BorderThickness" Value="1" />
+                    <Setter Property="FontWeight"    Value="Medium" />
+                  </Style>
+                  <Style Selector="Button:pointerover /template/ ContentPresenter">
+                    <Setter Property="Background" Value="{DynamicResource AppSurfaceVariant}" />
+                  </Style>
+                  <Style Selector="Button:disabled /template/ ContentPresenter">
+                    <Setter Property="Opacity" Value="0.45" />
+                  </Style>
+                </Button.Styles>
+              </Button>
+
+            </StackPanel>
+
+            <!-- Privacy note -->
+            <TextBlock TextWrapping="Wrap"
+                       FontSize="12"
+                       Foreground="{DynamicResource AppSubtext}"
+                       Text="🔒 Застосунок отримує доступ виключно до своєї прихованої папки (AppData). Ваші файли у Google Drive залишаються повністю недоступними." />
 
           </StackPanel>
+        </Border>
 
-          <!-- Privacy note -->
-          <TextBlock TextWrapping="Wrap"
-                     FontSize="12"
-                     Foreground="{DynamicResource AppSubtext}"
-                     Text="🔒 Застосунок отримує доступ виключно до своєї прихованої папки (AppData). Ваші файли у Google Drive залишаються повністю недоступними." />
+        <!-- ═══════════ SETUP INSTRUCTIONS CARD ════════════════════════ -->
+        <Border Background="{DynamicResource AppSurfaceVariant}"
+                CornerRadius="10"
+                Padding="22"
+                BorderBrush="{DynamicResource AppDivider}"
+                BorderThickness="1"
+                Margin="0,16,0,0"
+                IsVisible="{Binding ShowSetupHint}">
+          <StackPanel Spacing="14">
 
-        </StackPanel>
-      </Border>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="📋"
+                         FontSize="16"
+                         VerticalAlignment="Center" />
+              <TextBlock Text="Як налаштувати Google Cloud Console"
+                         FontSize="14"
+                         FontWeight="SemiBold"
+                         Foreground="{DynamicResource AppOnBackground}"
+                         VerticalAlignment="Center" />
+            </StackPanel>
 
-      <!-- ═══════════ SETUP INSTRUCTIONS CARD ════════════════════════════ -->
-      <!--
-        Shown only when GoogleAuthConfig.IsCurrentPlatformConfigured = false,
-        i.e., the developer hasn't yet replaced placeholder Client IDs.
-      -->
-      <Border Background="{DynamicResource AppSurfaceVariant}"
-              CornerRadius="10"
-              Padding="22"
-              BorderBrush="{DynamicResource AppDivider}"
-              BorderThickness="1"
-              Margin="0,16,0,0"
-              IsVisible="{Binding ShowSetupHint}">
-        <StackPanel Spacing="14">
+            <StackPanel Spacing="8">
+              <TextBlock TextWrapping="Wrap" FontSize="12"
+                         Foreground="{DynamicResource AppSubtext}"
+                         Text="1. Відкрийте console.cloud.google.com та виберіть ваш проєкт." />
+              <TextBlock TextWrapping="Wrap" FontSize="12"
+                         Foreground="{DynamicResource AppSubtext}"
+                         Text="2. APIs / Services → Enable APIs → увімкніть Google Drive API." />
+              <TextBlock TextWrapping="Wrap" FontSize="12"
+                         Foreground="{DynamicResource AppSubtext}"
+                         Text="3. Credentials → Create Credentials → OAuth client ID → Desktop app → скопіюйте Client ID та Secret." />
+              <TextBlock TextWrapping="Wrap" FontSize="12"
+                         Foreground="{DynamicResource AppSubtext}"
+                         Text="4. Для Android: ще один Client ID → Android → Package: com.kozak.AmberNotes → вкажіть SHA-1." />
+              <TextBlock TextWrapping="Wrap" FontSize="12"
+                         Foreground="{DynamicResource AppSubtext}"
+                         Text="5. Скопіюйте oauth.config.example.json → oauth.config.json та заповніть DesktopClientId і DesktopClientSecret." />
+              <TextBlock TextWrapping="Wrap" FontSize="12"
+                         Foreground="{DynamicResource AppSubtext}"
+                         Text="6. Для Android: у Desktop клієнті додайте Authorized redirect URI: com.kozak.ambernotes://oauth2callback" />
+            </StackPanel>
 
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <TextBlock Text="📋"
-                       FontSize="16"
-                       VerticalAlignment="Center" />
-            <TextBlock Text="Як налаштувати Google Cloud Console"
-                       FontSize="14"
-                       FontWeight="SemiBold"
-                       Foreground="{DynamicResource AppOnBackground}"
-                       VerticalAlignment="Center" />
           </StackPanel>
+        </Border>
 
-          <StackPanel Spacing="8">
-            <TextBlock TextWrapping="Wrap" FontSize="12"
-                       Foreground="{DynamicResource AppSubtext}"
-                       Text="1. Відкрийте console.cloud.google.com та виберіть ваш проєкт." />
-            <TextBlock TextWrapping="Wrap" FontSize="12"
-                       Foreground="{DynamicResource AppSubtext}"
-                       Text="2. APIs / Services → Enable APIs → увімкніть Google Drive API." />
-            <TextBlock TextWrapping="Wrap" FontSize="12"
-                       Foreground="{DynamicResource AppSubtext}"
-                       Text="3. Credentials → Create Credentials → OAuth client ID → Desktop app → скопіюйте Client ID та Secret." />
-            <TextBlock TextWrapping="Wrap" FontSize="12"
-                       Foreground="{DynamicResource AppSubtext}"
-                       Text="4. Для Android: ще один Client ID → Android → Package: com.kozak.AmberNotes → вкажіть SHA-1." />
-            <TextBlock TextWrapping="Wrap" FontSize="12"
-                       Foreground="{DynamicResource AppSubtext}"
-                       Text="5. Скопіюйте oauth.config.example.json → oauth.config.json та заповніть DesktopClientId і DesktopClientSecret." />
-            <TextBlock TextWrapping="Wrap" FontSize="12"
-                       Foreground="{DynamicResource AppSubtext}"
-                       Text="6. Для Android: у Desktop клієнті додайте Authorized redirect URI: com.kozak.ambernotes://oauth2callback" />
-          </StackPanel>
+      </StackPanel>
+    </ScrollViewer>
 
-        </StackPanel>
-      </Border>
+    <!-- ══ Layer 1: Conflict resolution overlay ═════════════════════════ -->
+    <!--
+      Semi-transparent backdrop + centered conflict card.
+      Visible only when ConflictViewModel is not null.
+    -->
+    <Grid IsVisible="{Binding IsConflictVisible}"
+          Background="#CC000000"
+          ZIndex="10">
+      <ScrollViewer VerticalScrollBarVisibility="Auto"
+                    HorizontalScrollBarVisibility="Disabled"
+                    Padding="24">
+        <ContentControl Content="{Binding ConflictViewModel}"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+          <ContentControl.DataTemplates>
+            <DataTemplate DataType="{x:Type vm:SaltConflictViewModel}">
+              <views:SaltConflictView />
+            </DataTemplate>
+          </ContentControl.DataTemplates>
+        </ContentControl>
+      </ScrollViewer>
+    </Grid>
 
-    </StackPanel>
-  </ScrollViewer>
+  </Grid>
 
 </UserControl>

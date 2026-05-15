@@ -40,6 +40,9 @@ public class DatabaseService
     /// <summary>True when the database file does not yet exist (first run).</summary>
     public bool IsNewDatabase => !File.Exists(_dbPath);
 
+    /// <summary>True when the database is ready to accept connections (unlocked or plain).</summary>
+    public bool IsUnlocked => _isPlain || _hexKey is not null;
+
     /// <summary>
     /// Marks this service as an unencrypted (plain SQLite) database — used for public.db.
     /// After calling this, OpenConnection() and Initialize() work without any PRAGMA key.
@@ -125,6 +128,28 @@ public class DatabaseService
         using var seedTx = connection.BeginTransaction();
         SeedDefaultBook(connection, seedTx);
         seedTx.Commit();
+    }
+
+    /// <summary>
+    /// Re-encrypts the database with a new key using SQLCipher's PRAGMA rekey.
+    /// After this, all future OpenConnection() calls use <paramref name="newHexKey"/>.
+    /// Used when changing the master password (Step 29) or adopting a cloud password (Step 27 Option 1).
+    /// Throws <see cref="InvalidOperationException"/> if the database is not yet unlocked.
+    /// </summary>
+    public void Rekey(string newHexKey)
+    {
+        if (_isPlain)
+            throw new InvalidOperationException("Cannot rekey an unencrypted (plain) database.");
+        if (_hexKey is null)
+            throw new InvalidOperationException("Database must be unlocked before rekeying.");
+
+        using var conn = OpenConnectionInternal(_hexKey);
+        using var cmd  = conn.CreateCommand();
+        // PRAGMA rekey changes the encryption key of the currently open, decrypted database
+        cmd.CommandText = $"PRAGMA rekey = \"x'{newHexKey}'\";";
+        cmd.ExecuteNonQuery();
+
+        _hexKey = newHexKey; // update stored key for future OpenConnection() calls
     }
 
     /// <summary>
