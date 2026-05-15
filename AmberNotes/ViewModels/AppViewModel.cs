@@ -29,11 +29,12 @@ public partial class AppViewModel : ViewModelBase
         DatabaseService    privateDbService,
         CryptoService      cryptoSvc,
         GoogleDriveService driveService,
-        SaltSyncService    saltSyncService)
+        SaltSyncService    saltSyncService,
+        SyncService        syncService)
     {
         var mainVm = new MainViewModel(
             publicNoteRepo, publicBookRepo,
-            privateDbService, cryptoSvc, driveService, saltSyncService);
+            privateDbService, cryptoSvc, driveService, saltSyncService, syncService);
 
         CurrentViewModel = mainVm;
         return mainVm;

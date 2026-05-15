@@ -94,7 +94,7 @@ MainWindow / AppView
 **Поточна версія:** v0.6: Sync Foundation & Security Management
 - [x] **Крок 26: Міграція Бази Даних** ✅
 - [x] **Крок 27: Криптографічний "Якір" (Salt Sync)** ✅
-- [ ] **Крок 28: Сервіс синхронізації (Encrypted Gateway)**
+- [x] **Крок 28: Сервіс синхронізації (Encrypted Gateway)** ✅
 - [ ] **Крок 29: Функція зміни Майстер-пароля (Settings)**
 - [ ] **Крок 30: Інтеграція в UI (Single-Window)**
 
@@ -356,6 +356,39 @@ MainWindow / AppView
   - Option 2 теж отримала поле пароля (для майбутнього Pull у Кроці 28): `ShowPasswordField => SelectedOption == 1 || SelectedOption == 2`.
   - `IsEmptyVaultMode` property у `SaltConflictViewModel` + conditional XAML: при порожній локальній базі діалог показує лише Option 1 із спрощеним заголовком "Введіть пароль від хмарного сховища" (Options 2 і 3 сховані через `IsVisible="{Binding !IsEmptyVaultMode}"`).
   - `SettingsViewModel`: для `IsLocalEmpty=true` тепер так само показує діалог (не авто-резолюція) — ТЗ вимагає "відразу покажи UI із запитом пароля".
+
+- **Виправлення (в тій самій сесії) — Option 1 та Option 2 тепер виконують Pull:**
+  - `SaltSyncService.ResolveUseCloudPasswordAsync` тепер також викликає `PullCloudNotesAsync(cloudHexKey)` після re-key + заміни salt (ТЗ: "зроби злиття даних").
+  - `SaltSyncService.ResolveKeepLocalPasswordAsync` тепер приймає `cloudPassword` та викликає `PullCloudNotesAsync(cloudHexKey)` перед перезаписом cloud salt (ТЗ: "розшифруй хмарні дані, злий їх локально (LWW)").
+  - `PullCloudNotesAsync(hexKey, ct)` — inline helper: List → Download → DecryptAesGcm → deserialize `NoteCloudDto` → Upsert LWW. Доступ до `NoteCloudDto` (internal клас з `SyncService.cs`) — в межах одного assembly. ✅
+
+- **Результат:** `dotnet build AmberNotes.Desktop` — **succeeded** ✅ (0 помилок, 0 попереджень)
+
+### 2026-05-15 — Крок 28: Сервіс синхронізації, Encrypted Gateway (v0.6)
+
+- **Мета:** Повноцінна двостороння зашифрована синхронізація нотаток між локальними БД та Google Drive. Кожна нотатка серіалізується в JSON → шифрується AES-256-GCM → `note{UUID}.json.enc` у Drive appDataFolder.
+
+- **Нові файли (Services/):**
+  - `SyncService.cs` — головний оркестратор синхронізації:
+    - `SyncResult` record: `(Success, Pushed, Pulled, Errors, Message)`
+    - `SyncAsync(hexKey, ct)` — основна точка входу; обирає між Normal та CloudWipe режимами.
+    - **Normal mode:** Pull (List → Download → Decrypt → Upsert LWW) → Push (GetAllIncludingDeleted → Encrypt → Upload). LWW: SQL `ON CONFLICT DO UPDATE WHERE excluded.UpdatedAt > Notes.UpdatedAt`. Pull маршрутизує нотатки в правильне сховище по `Note.Type`.
+    - **CloudWipe mode (PendingCloudWipe=true):** пропускає Pull → видаляє всі `.json.enc` + старий salt → вивантажує новий salt → Push всіх нотаток → скидає `PendingCloudWipe` ЛИШЕ після успіху всіх вивантажень.
+    - Push включає нотатки з `is_deleted=true` (tombstones для інших пристроїв).
+    - `NoteCloudDto` — wire format з `[JsonPropertyName]` для camelCase JSON.
+    - SQLite FK constraints вимкнені за замовчуванням → нотатки з відсутніми BookId безпечно вставляються.
+  - `DatabaseService.CurrentHexKey` — новий `public string? CurrentHexKey => _hexKey` для передачі ключа в SyncService.
+
+- **Оновлені файли:**
+  - `SettingsViewModel.cs` — +`SyncService`, +`DatabaseService`, +`CryptoService` у конструктор; `SyncNowCommand`:
+    - Якщо vault відкритий → використовує `_privateDb.CurrentHexKey` без запиту пароля.
+    - Якщо vault закритий → показує поле `SyncPassword`, деривує ключ, перевіряє через `TryUnlockWithKey`, потім синхронізує.
+    - Статуси: "Підготовка до синхронізації..." / "Надійне шифрування бази..." / "Безпечне вивантаження в хмару...".
+    - `NeedsSyncPassword` / `ShowSyncPasswordField` — показує поле пароля якщо vault закритий.
+  - `SettingsView.axaml` — нова картка "Синхронізація" (видима лише якщо `IsGoogleConnected`): поле пароля (при `ShowSyncPasswordField`), кнопка "🔄 Синхронізувати зараз", примітка про AES-256-GCM.
+  - `MainViewModel.cs` — +`SyncService _syncService`, передається у `SettingsViewModel`.
+  - `AppViewModel.cs` — `SwitchToMain` +`SyncService`.
+  - `App.axaml.cs` — створює `SyncService`, передає у ланцюгу.
 
 - **Результат:** `dotnet build AmberNotes.Desktop` — **succeeded** ✅ (0 помилок, 0 попереджень)
 

@@ -190,6 +190,84 @@
           </StackPanel>
         </Border>
 
+        <!-- ═══════════ SYNC CARD ══════════════════════════════════════ -->
+        <Border Background="{DynamicResource AppSurface}"
+                CornerRadius="12"
+                Padding="24"
+                BorderBrush="{DynamicResource AppBorder}"
+                BorderThickness="1"
+                Margin="0,16,0,0"
+                IsVisible="{Binding IsGoogleConnected}">
+          <StackPanel Spacing="16">
+
+            <!-- Title -->
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <TextBlock Text="🔄"
+                         FontSize="22"
+                         VerticalAlignment="Center" />
+              <StackPanel Spacing="3" VerticalAlignment="Center">
+                <TextBlock Text="Синхронізація"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource AppOnSurface}" />
+                <TextBlock Text="Зашифроване двостороннє резервне копіювання нотаток у хмарі"
+                           FontSize="12"
+                           Foreground="{DynamicResource AppSubtext}" />
+              </StackPanel>
+            </StackPanel>
+
+            <!-- Divider -->
+            <Border Height="1" Background="{DynamicResource AppDivider}" />
+
+            <!-- Password field: shown only when private vault is locked -->
+            <StackPanel Spacing="6" IsVisible="{Binding ShowSyncPasswordField}">
+              <TextBlock Text="Для синхронізації потрібен пароль від Приватного сховища:"
+                         FontSize="12"
+                         TextWrapping="Wrap"
+                         Foreground="{DynamicResource AppSubtext}" />
+              <TextBox Text="{Binding SyncPassword}"
+                       PasswordChar="●"
+                       PlaceholderText="Майстер-пароль від приватного сховища"
+                       FontSize="14"
+                       Padding="10,8"
+                       CornerRadius="8"
+                       Background="{DynamicResource AppBackground}"
+                       BorderBrush="{DynamicResource AppBorder}"
+                       BorderThickness="1" />
+            </StackPanel>
+
+            <!-- Sync Now button -->
+            <Button Content="🔄 Синхронізувати зараз"
+                    Command="{Binding SyncNowCommand}"
+                    IsEnabled="{Binding IsNotBusy}"
+                    Padding="18,10"
+                    CornerRadius="8"
+                    HorizontalAlignment="Left">
+              <Button.Styles>
+                <Style Selector="Button">
+                  <Setter Property="Background"    Value="{DynamicResource AppPrimary}" />
+                  <Setter Property="Foreground"    Value="{DynamicResource AppOnPrimary}" />
+                  <Setter Property="BorderThickness" Value="0" />
+                  <Setter Property="FontWeight"    Value="SemiBold" />
+                </Style>
+                <Style Selector="Button:pointerover /template/ ContentPresenter">
+                  <Setter Property="Opacity" Value="0.85" />
+                </Style>
+                <Style Selector="Button:disabled /template/ ContentPresenter">
+                  <Setter Property="Opacity" Value="0.45" />
+                </Style>
+              </Button.Styles>
+            </Button>
+
+            <!-- Privacy note -->
+            <TextBlock TextWrapping="Wrap"
+                       FontSize="12"
+                       Foreground="{DynamicResource AppSubtext}"
+                       Text="🛡 Усі нотатки (публічні та приватні) шифруються AES-256-GCM перед вивантаженням. Хмара ніколи не зберігає відкритий текст." />
+
+          </StackPanel>
+        </Border>
+
         <!-- ═══════════ SETUP INSTRUCTIONS CARD ════════════════════════ -->
         <Border Background="{DynamicResource AppSurfaceVariant}"
                 CornerRadius="10"

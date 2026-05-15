@@ -1,6 +1,8 @@
 using System;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using AmberNotes.Models;
 
 namespace AmberNotes.Services;
 
@@ -131,7 +133,7 @@ public sealed class SaltSyncService
                 break;
 
             case SaltConflictChoice.KeepLocalPassword:
-                await ResolveKeepLocalPasswordAsync(ct);
+                await ResolveKeepLocalPasswordAsync(cloudPassword, cloudSalt, ct);
                 break;
 
             case SaltConflictChoice.HardReset:
@@ -147,24 +149,45 @@ public sealed class SaltSyncService
         string?           cloudPassword,
         CancellationToken ct)
     {
-        // If vault is unlocked with a DIFFERENT key, re-key it
-        if (cloudPassword is not null && _privateDb.IsUnlocked)
-        {
-            var newHexKey = _crypto.DeriveKeyFromSalt(cloudPassword, cloudSalt);
-            _privateDb.Rekey(newHexKey);
-        }
+        string? cloudHexKey = null;
 
-        // Replace local salt file with the cloud salt
+        // If the user provided the cloud password, derive the cloud key
+        if (cloudPassword is not null)
+            cloudHexKey = _crypto.DeriveKeyFromSalt(cloudPassword, cloudSalt);
+
+        // Re-key the private vault if it is unlocked and we have a new key
+        if (cloudHexKey is not null && _privateDb.IsUnlocked)
+            _privateDb.Rekey(cloudHexKey);
+
+        // Replace local salt file with the cloud salt (local key = cloud key from now on)
         _crypto.ReplaceSaltFromBytes(cloudSalt);
+
+        // Pull cloud notes encrypted with the cloud key → merge locally (LWW)
+        // (ТЗ: "зроби злиття даних")
+        if (cloudHexKey is not null)
+            await PullCloudNotesAsync(cloudHexKey, ct);
     }
 
     // ── Option 2: Keep Local Password ────────────────────────────────────────
 
-    private async Task ResolveKeepLocalPasswordAsync(CancellationToken ct)
+    private async Task ResolveKeepLocalPasswordAsync(
+        string?           cloudPassword,
+        byte[]            cloudSalt,
+        CancellationToken ct)
     {
+        // Step 1: Pull cloud notes with cloud key, merge locally (LWW)
+        // (ТЗ: "розшифруй хмарні дані, злий їх локально (LWW)")
+        if (cloudPassword is not null)
+        {
+            var cloudHexKey = _crypto.DeriveKeyFromSalt(cloudPassword, cloudSalt);
+            await PullCloudNotesAsync(cloudHexKey, ct);
+        }
+
+        // Step 2: Overwrite cloud salt with local salt
+        // (ТЗ: "перезапиши файл ambernotes.salt у хмарі своїм локальним")
         var localSalt = _crypto.GetSaltBytes();
         if (localSalt is not null)
-            await _drive.UploadSaltAsync(localSalt, ct);   // overwrite cloud salt
+            await _drive.UploadSaltAsync(localSalt, ct);
     }
 
     // ── Option 3: Hard Reset ─────────────────────────────────────────────────
@@ -183,7 +206,67 @@ public sealed class SaltSyncService
             await _drive.UploadSaltAsync(localSalt, ct);
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // ── Pull helper ───────────────────────────────────────────────────────────
+
+    private static readonly JsonSerializerOptions _jsonOpts = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
+    /// <summary>
+    /// Downloads all cloud notes encrypted with <paramref name="hexKey"/>,
+    /// decrypts them, and upserts into the local repository (LWW by UpdatedAt).
+    /// Errors on individual notes are skipped (network resilience).
+    /// </summary>
+    private async Task PullCloudNotesAsync(string hexKey, CancellationToken ct)
+    {
+        try
+        {
+            var cloudFiles  = await _drive.ListNoteFilesAsync(ct);
+            var privateRepo = _privateDb.IsUnlocked ? new NoteRepository(_privateDb) : null;
+
+            foreach (var (_, noteId) in cloudFiles)
+            {
+                ct.ThrowIfCancellationRequested();
+                try
+                {
+                    var encrypted = await _drive.DownloadNoteFileAsync(noteId, ct);
+                    if (encrypted is null) continue;
+
+                    var json  = _crypto.DecryptAesGcm(encrypted, hexKey);
+                    var dto   = JsonSerializer.Deserialize<NoteCloudDto>(json, _jsonOpts);
+                    if (dto is null) continue;
+
+                    var note = new Note
+                    {
+                        Id           = dto.Id       ?? "",
+                        Title        = dto.Title    ?? "",
+                        Content      = dto.Content  ?? "",
+                        NoteDateTime = ParseDate(dto.NoteDateTime),
+                        CreatedAt    = ParseDate(dto.CreatedAt),
+                        UpdatedAt    = ParseDate(dto.UpdatedAt),
+                        Type         = dto.Type == "Private" ? NoteType.Private : NoteType.Public,
+                        BookId       = dto.BookId   ?? "",
+                        IsDeleted    = dto.IsDeleted
+                    };
+
+                    if (note.Type == NoteType.Private && privateRepo is not null)
+                        privateRepo.Upsert(note);
+                    else if (note.Type == NoteType.Public)
+                        _publicNoteRepo.Upsert(note);
+                }
+                catch { /* skip individual note errors */ }
+            }
+        }
+        catch (OperationCanceledException) { throw; }
+        catch { /* skip if listing fails */ }
+    }
+
+    private static DateTime ParseDate(string? s) =>
+        DateTime.TryParse(s, null, System.Globalization.DateTimeStyles.RoundtripKind, out var d)
+            ? d : DateTime.UtcNow;
+
+    // ── Other helpers ─────────────────────────────────────────────────────────
 
     private static bool SaltsEqual(byte[] a, byte[] b)
     {

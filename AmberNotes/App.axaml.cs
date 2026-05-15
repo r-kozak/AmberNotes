@@ -52,19 +52,27 @@ namespace AmberNotes
             appSettingsSvc,
             publicNoteRepo);
 
-        // ── 7. Always start in Public mode — no Login screen at startup ───────
+        // ── 7. Encrypted sync service (full two-way sync) ─────────────────────
+        var syncSvc = new SyncService(
+            cryptoSvc,
+            googleDriveSvc,
+            privateDbService,
+            publicNoteRepo,
+            appSettingsSvc);
+
+        // ── 8. Always start in Public mode — no Login screen at startup ───────
         var appVm  = new AppViewModel();
         var mainVm = appVm.SwitchToMain(publicNoteRepo, publicBookRepo,
                                         privateDbService, cryptoSvc,
-                                        googleDriveSvc, saltSyncSvc);
+                                        googleDriveSvc, saltSyncSvc, syncSvc);
 
-            // ── 8. Wire up Private login flow ─────────────────────────────────────
+            // ── 9. Wire up Private login flow ─────────────────────────────────────
             //   When user taps "🔒 Приватний", MainViewModel fires PrivateLoginRequested.
             //   AppViewModel shows LoginView full-screen; on success/cancel returns to MainView.
             mainVm.PrivateLoginRequested += () =>
                 appVm.ShowPrivateLogin(cryptoSvc, privateDbService, mainVm);
 
-            // ── 9. Wire up platform lifetime ──────────────────────────────────────
+            // ── 10. Wire up platform lifetime ─────────────────────────────────────
             SetupLifetime(appVm);
 
             base.OnFrameworkInitializationCompleted();

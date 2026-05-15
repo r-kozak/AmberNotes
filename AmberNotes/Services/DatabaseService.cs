@@ -44,6 +44,14 @@ public class DatabaseService
     public bool IsUnlocked => _isPlain || _hexKey is not null;
 
     /// <summary>
+    /// Returns the current 256-bit hex key if the private vault is unlocked.
+    /// null when vault is locked or this is a plain (public) database.
+    /// Used by SyncService to encrypt/decrypt cloud note files.
+    /// SECURITY: never log this value.
+    /// </summary>
+    public string? CurrentHexKey => _hexKey;
+
+    /// <summary>
     /// Marks this service as an unencrypted (plain SQLite) database — used for public.db.
     /// After calling this, OpenConnection() and Initialize() work without any PRAGMA key.
     /// </summary>

@@ -38,6 +38,9 @@ public partial class MainViewModel : ViewModelBase
     // Salt sync (crypto anchor ↔ cloud)
     private readonly SaltSyncService _saltSyncService;
 
+    // Full encrypted sync service
+    private readonly SyncService _syncService;
+
     /// <summary>Returns the note repository for the currently active mode.</summary>
     public NoteRepository NoteRepo =>
         ModeService.Instance.IsPrivate && _privateNoteRepo is not null
@@ -98,7 +101,8 @@ public partial class MainViewModel : ViewModelBase
         DatabaseService     privateDbService,
         CryptoService       cryptoSvc,
         GoogleDriveService  driveService,
-        SaltSyncService     saltSyncService)
+        SaltSyncService     saltSyncService,
+        SyncService         syncService)
     {
         _publicNoteRepo   = publicNoteRepo;
         _publicBookRepo   = publicBookRepo;
@@ -106,6 +110,7 @@ public partial class MainViewModel : ViewModelBase
         _cryptoSvc        = cryptoSvc;
         _driveService     = driveService;
         _saltSyncService  = saltSyncService;
+        _syncService      = syncService;
 
         // Sync initial state from singletons
         _isPrivateMode = ModeService.Instance.IsPrivate;
@@ -159,7 +164,13 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private void GoToSettings()
     {
-        var settingsVm = new SettingsViewModel(_driveService, _saltSyncService, GoBackToList);
+        var settingsVm = new SettingsViewModel(
+            _driveService,
+            _saltSyncService,
+            _syncService,
+            _privateDbService,
+            _cryptoSvc,
+            GoBackToList);
         CurrentPage = settingsVm;
     }
 

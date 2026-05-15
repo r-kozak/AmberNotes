@@ -18,12 +18,16 @@ namespace AmberNotes.ViewModels;
 ///   • After connect: detect salt conflict and show SaltConflictViewModel overlay.
 ///   • Display connection status + connected email.
 ///   • Test the Drive appDataFolder connection.
+///   • Sync Now — encrypted two-way sync with Google Drive.
 ///   • Show setup hints when Client IDs are not yet configured.
 /// </summary>
 public partial class SettingsViewModel : ViewModelBase
 {
     private readonly GoogleDriveService _driveService;
     private readonly SaltSyncService    _saltSync;
+    private readonly SyncService        _syncService;
+    private readonly DatabaseService    _privateDb;
+    private readonly CryptoService      _cryptoSvc;
     private readonly Action             _goBack;
 
     // ── Status state ──────────────────────────────────────────────────────────
@@ -33,6 +37,7 @@ public partial class SettingsViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(StatusText))]
     [NotifyPropertyChangedFor(nameof(StatusIcon))]
     [NotifyCanExecuteChangedFor(nameof(TestConnectionCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SyncNowCommand))]
     private bool _isGoogleConnected;
 
     [ObservableProperty]
@@ -41,6 +46,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsNotBusy))]
     [NotifyCanExecuteChangedFor(nameof(ToggleGoogleDriveCommand))]
+    [NotifyCanExecuteChangedFor(nameof(SyncNowCommand))]
     private bool _isBusy;
 
     [ObservableProperty]
@@ -51,6 +57,20 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool _showSetupHint;
+
+    // ── Sync password (shown when private vault is locked and user clicks Sync Now) ──
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowSyncPasswordField))]
+    [NotifyCanExecuteChangedFor(nameof(SyncNowCommand))]
+    private bool _needsSyncPassword;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SyncNowCommand))]
+    private string _syncPassword = "";
+
+    /// <summary>True when vault is locked — user must enter password to sync.</summary>
+    public bool ShowSyncPasswordField => NeedsSyncPassword;
 
     // ── Conflict overlay ──────────────────────────────────────────────────────
 
@@ -76,14 +96,23 @@ public partial class SettingsViewModel : ViewModelBase
     public SettingsViewModel(
         GoogleDriveService driveService,
         SaltSyncService    saltSync,
+        SyncService        syncService,
+        DatabaseService    privateDb,
+        CryptoService      cryptoSvc,
         Action             goBack)
     {
         _driveService = driveService;
         _saltSync     = saltSync;
+        _syncService  = syncService;
+        _privateDb    = privateDb;
+        _cryptoSvc    = cryptoSvc;
         _goBack       = goBack;
 
         ShowSetupHint = !GoogleAuthConfig.IsCurrentPlatformConfigured;
         RefreshConnectionState();
+
+        // Determine if password is needed for sync at startup
+        NeedsSyncPassword = !_privateDb.IsUnlocked;
     }
 
     // ── Commands ──────────────────────────────────────────────────────────────
@@ -130,7 +159,6 @@ public partial class SettingsViewModel : ViewModelBase
 
             if (conflict is null)
             {
-                // No conflict — salt was uploaded or already matched
                 ShowStatus($"✅ Підключено як {_driveService.ConnectedEmail}. Ключ шифрування синхронізовано.");
                 return;
             }
@@ -167,6 +195,66 @@ public partial class SettingsViewModel : ViewModelBase
             ShowStatus(ok
                 ? "✅ З'єднання успішне! AppData папка застосунку доступна."
                 : "❌ З'єднання не вдалося. Можливо, токен прострочено — спробуйте підключитися знову.");
+        }
+        catch (Exception ex)
+        {
+            ShowStatus($"Помилка: {ex.Message}");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    // ── Sync Now command ──────────────────────────────────────────────────────
+
+    private bool CanSyncNow() =>
+        IsGoogleConnected && IsNotBusy &&
+        (!NeedsSyncPassword || !string.IsNullOrWhiteSpace(SyncPassword));
+
+    [RelayCommand(CanExecute = nameof(CanSyncNow))]
+    private async Task SyncNowAsync(CancellationToken ct)
+    {
+        IsBusy = true;
+        ShowStatus("Підготовка до синхронізації...");
+
+        try
+        {
+            // Get hex key: use current session key if vault is unlocked,
+            // otherwise derive it from the entered sync password.
+            string? hexKey = _privateDb.CurrentHexKey;
+
+            if (hexKey is null && NeedsSyncPassword)
+            {
+                ShowStatus("Надійне шифрування бази...");
+                hexKey = await Task.Run(
+                    () => _cryptoSvc.DeriveKey(SyncPassword), ct);
+
+                // Attempt to unlock the private vault with derived key (verify password)
+                if (!_privateDb.IsNewDatabase && !_privateDb.TryUnlockWithKey(hexKey))
+                {
+                    ShowStatus("❌ Невірний пароль. Перевірте та спробуйте знову.");
+                    return;
+                }
+
+                // Password validated → no longer need the password field
+                NeedsSyncPassword = false;
+                SyncPassword      = "";
+            }
+
+            if (hexKey is null)
+            {
+                ShowStatus("❌ Будь ласка, відкрийте Приватне сховище або введіть пароль.");
+                return;
+            }
+
+            ShowStatus("Безпечне вивантаження в хмару...");
+            var result = await _syncService.SyncAsync(hexKey, ct);
+            ShowStatus(result.Message);
+        }
+        catch (OperationCanceledException)
+        {
+            ShowStatus("Синхронізацію скасовано.");
         }
         catch (Exception ex)
         {
