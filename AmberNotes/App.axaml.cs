@@ -64,7 +64,8 @@ namespace AmberNotes
         var appVm  = new AppViewModel();
         var mainVm = appVm.SwitchToMain(publicNoteRepo, publicBookRepo,
                                         privateDbService, cryptoSvc,
-                                        googleDriveSvc, saltSyncSvc, syncSvc);
+                                        googleDriveSvc, saltSyncSvc, syncSvc,
+                                        appSettingsSvc);
 
             // ── 9. Wire up Private login flow ─────────────────────────────────────
             //   When user taps "🔒 Приватний", MainViewModel fires PrivateLoginRequested.

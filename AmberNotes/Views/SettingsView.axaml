@@ -268,6 +268,66 @@
           </StackPanel>
         </Border>
 
+        <!-- ═══════════ SECURITY CARD ═════════════════════════════════ -->
+        <Border Background="{DynamicResource AppSurface}"
+                CornerRadius="12"
+                Padding="24"
+                BorderBrush="{DynamicResource AppBorder}"
+                BorderThickness="1"
+                Margin="0,16,0,0">
+          <StackPanel Spacing="16">
+
+            <!-- Title -->
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <TextBlock Text="🔑"
+                         FontSize="22"
+                         VerticalAlignment="Center" />
+              <StackPanel Spacing="3" VerticalAlignment="Center">
+                <TextBlock Text="Безпека"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource AppOnSurface}" />
+                <TextBlock Text="Управління майстер-паролем Приватного сховища"
+                           FontSize="12"
+                           Foreground="{DynamicResource AppSubtext}" />
+              </StackPanel>
+            </StackPanel>
+
+            <!-- Divider -->
+            <Border Height="1" Background="{DynamicResource AppDivider}" />
+
+            <!-- Description -->
+            <TextBlock TextWrapping="Wrap"
+                       FontSize="12"
+                       Foreground="{DynamicResource AppSubtext}"
+                       Text="Зміна пароля включає автоматичну синхронізацію зі старим ключем (якщо є інтернет) та перешифровку бази даних новим паролем." />
+
+            <!-- Change Password button -->
+            <Button Content="🔑 Змінити пароль"
+                    Command="{Binding OpenChangePasswordCommand}"
+                    IsEnabled="{Binding IsNotBusy}"
+                    Padding="18,10"
+                    CornerRadius="8"
+                    HorizontalAlignment="Left">
+              <Button.Styles>
+                <Style Selector="Button">
+                  <Setter Property="Background"    Value="{DynamicResource AppSecondary}" />
+                  <Setter Property="Foreground"    Value="{DynamicResource AppOnPrimary}" />
+                  <Setter Property="BorderThickness" Value="0" />
+                  <Setter Property="FontWeight"    Value="SemiBold" />
+                </Style>
+                <Style Selector="Button:pointerover /template/ ContentPresenter">
+                  <Setter Property="Opacity" Value="0.85" />
+                </Style>
+                <Style Selector="Button:disabled /template/ ContentPresenter">
+                  <Setter Property="Opacity" Value="0.45" />
+                </Style>
+              </Button.Styles>
+            </Button>
+
+          </StackPanel>
+        </Border>
+
         <!-- ═══════════ SETUP INSTRUCTIONS CARD ════════════════════════ -->
         <Border Background="{DynamicResource AppSurfaceVariant}"
                 CornerRadius="10"
@@ -316,23 +376,26 @@
       </StackPanel>
     </ScrollViewer>
 
-    <!-- ══ Layer 1: Conflict resolution overlay ═════════════════════════ -->
+    <!-- ══ Layer 1: Overlay (conflict OR change password) ══════════════ -->
     <!--
-      Semi-transparent backdrop + centered conflict card.
-      Visible only when ConflictViewModel is not null.
+      Semi-transparent backdrop + centered overlay card.
+      Visible when any overlay ViewModel is active.
     -->
-    <Grid IsVisible="{Binding IsConflictVisible}"
+    <Grid IsVisible="{Binding IsOverlayVisible}"
           Background="#CC000000"
           ZIndex="10">
       <ScrollViewer VerticalScrollBarVisibility="Auto"
                     HorizontalScrollBarVisibility="Disabled"
                     Padding="24">
-        <ContentControl Content="{Binding ConflictViewModel}"
+        <ContentControl Content="{Binding CurrentOverlay}"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center">
           <ContentControl.DataTemplates>
             <DataTemplate DataType="{x:Type vm:SaltConflictViewModel}">
               <views:SaltConflictView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:ChangePasswordViewModel}">
+              <views:ChangePasswordView />
             </DataTemplate>
           </ContentControl.DataTemplates>
         </ContentControl>

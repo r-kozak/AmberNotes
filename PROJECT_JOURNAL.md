@@ -91,12 +91,12 @@ MainWindow / AppView
 - [x] **Крок 24: SettingsView.** `SettingsViewModel.cs` + `SettingsView.axaml` — підключення/відключення Google Drive, статус з'єднання, підказки налаштування Cloud Console, тематизація.
 - [x] **Крок 25: Navigation Integration.** `MainViewModel.GoToSettingsCommand`, `AppViewModel.SwitchToMain` оновлено з `GoogleDriveService`. ⚙ кнопка в тулбарі `MainView`. `App.axaml` DataTemplate. `App.axaml.cs` — створення + передача сервісів.
 
-**Поточна версія:** v0.6: Sync Foundation & Security Management
+**Поточна версія:** v0.6: Sync Foundation & Security Management ✅
 - [x] **Крок 26: Міграція Бази Даних** ✅
 - [x] **Крок 27: Криптографічний "Якір" (Salt Sync)** ✅
 - [x] **Крок 28: Сервіс синхронізації (Encrypted Gateway)** ✅
-- [ ] **Крок 29: Функція зміни Майстер-пароля (Settings)**
-- [ ] **Крок 30: Інтеграція в UI (Single-Window)**
+- [x] **Крок 29: Функція зміни Майстер-пароля (Settings)** ✅
+- [x] **Крок 30: Інтеграція в UI (Single-Window)** ✅
 
 ## Журнал сесій (Session Log)
 ### 2026-05-03 — Ініціалізація проєкту
@@ -392,3 +392,20 @@ MainWindow / AppView
 
 - **Результат:** `dotnet build AmberNotes.Desktop` — **succeeded** ✅ (0 помилок, 0 попереджень)
 
+### 2026-05-15 — Кроки 29-30: Зміна пароля + UI інтеграція (v0.6 завершення)
+
+- **Нові файли (ViewModels/):**
+  - `ChangePasswordViewModel.cs` — overlay VM для зміни пароля: Online flow (перевірка пароля → pre-sync → `GenerateNewSaltAndDeriveKey` → `Rekey`), Offline flow (`ShowOfflineWarning` → підтвердження → `PendingCloudWipe=true` → rekey), vault locked state. Events: `Completed`, `Cancelled`.
+
+- **Нові файли (Views/):**
+  - `ChangePasswordView.axaml` / `.cs` — overlay з 3 станами: форма паролів (поточний/новий/підтвердження), orange offline warning panel ("Ми можемо змінити пароль локально, але коли з'явиться зв'язок, хмара буде повністю перезаписана..."), amber vault-locked info.
+
+- **Оновлені файли:**
+  - `SettingsViewModel.cs` — +`AppSettingsService _appSettings` у конструкторі; `CurrentOverlay` computed (`ConflictViewModel ?? ChangePasswordViewModel`); `IsOverlayVisible`; `OpenChangePasswordCommand`.
+  - `SettingsView.axaml` — нова картка "Безпека 🔑" з кнопкою "Змінити пароль" (стиль `AppSecondary`); overlay перейменовано на `IsOverlayVisible/CurrentOverlay`; додано `DataTemplate ChangePasswordViewModel→ChangePasswordView`.
+  - `MainViewModel.cs`, `AppViewModel.cs`, `App.axaml.cs` — `AppSettingsService` доданий до ланцюга.
+
+- **UX-статуси (ТЗ):** "Синхронізуємо дані перед зміною пароля..." ✅; "Надійне шифрування бази..." ✅; "✅ Пароль успішно змінено! Не забудьте ввести цей новий пароль..." ✅; offline warning ✅.
+
+- **Результат:** `dotnet build AmberNotes.Desktop` — **succeeded** ✅ (0 помилок, 0 попереджень)
+- **Статус v0.6:** ЗАВЕРШЕНО ✅

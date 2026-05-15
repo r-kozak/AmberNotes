@@ -28,6 +28,7 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly SyncService        _syncService;
     private readonly DatabaseService    _privateDb;
     private readonly CryptoService      _cryptoSvc;
+    private readonly AppSettingsService _appSettings;
     private readonly Action             _goBack;
 
     // ── Status state ──────────────────────────────────────────────────────────
@@ -72,17 +73,34 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>True when vault is locked — user must enter password to sync.</summary>
     public bool ShowSyncPasswordField => NeedsSyncPassword;
 
-    // ── Conflict overlay ──────────────────────────────────────────────────────
+    // ── Overlays ──────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// When not null, SettingsView shows SaltConflictView as an overlay
-    /// (ContentControl bound to this property).
+    /// Salt conflict resolution overlay (shown after connecting Drive when salts differ).
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsConflictVisible))]
+    [NotifyPropertyChangedFor(nameof(CurrentOverlay))]
+    [NotifyPropertyChangedFor(nameof(IsOverlayVisible))]
     private SaltConflictViewModel? _conflictViewModel;
 
-    public bool IsConflictVisible => ConflictViewModel is not null;
+    /// <summary>Change master password overlay.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CurrentOverlay))]
+    [NotifyPropertyChangedFor(nameof(IsOverlayVisible))]
+    private ChangePasswordViewModel? _changePasswordViewModel;
+
+    /// <summary>
+    /// The currently active overlay (one at a time).
+    /// Bound to the ContentControl in SettingsView Layer 1.
+    /// DataTemplates in the view resolve ViewModel → View.
+    /// </summary>
+    public ViewModelBase? CurrentOverlay =>
+        (ViewModelBase?)ConflictViewModel ?? ChangePasswordViewModel;
+
+    public bool IsOverlayVisible => CurrentOverlay is not null;
+
+    // Keep for backward compat — used in the existing overlay grid IsVisible binding
+    public bool IsConflictVisible => IsOverlayVisible;
 
     // ── Computed ──────────────────────────────────────────────────────────────
 
@@ -99,6 +117,7 @@ public partial class SettingsViewModel : ViewModelBase
         SyncService        syncService,
         DatabaseService    privateDb,
         CryptoService      cryptoSvc,
+        AppSettingsService appSettings,
         Action             goBack)
     {
         _driveService = driveService;
@@ -106,6 +125,7 @@ public partial class SettingsViewModel : ViewModelBase
         _syncService  = syncService;
         _privateDb    = privateDb;
         _cryptoSvc    = cryptoSvc;
+        _appSettings  = appSettings;
         _goBack       = goBack;
 
         ShowSetupHint = !GoogleAuthConfig.IsCurrentPlatformConfigured;
@@ -264,6 +284,29 @@ public partial class SettingsViewModel : ViewModelBase
         {
             IsBusy = false;
         }
+    }
+
+    // ── Change Password command ───────────────────────────────────────────────
+
+    [RelayCommand]
+    private void OpenChangePassword()
+    {
+        var changePwdVm = new ChangePasswordViewModel(
+            _privateDb, _cryptoSvc, _syncService,
+            _appSettings, _driveService);
+
+        changePwdVm.Completed += () =>
+        {
+            ChangePasswordViewModel = null;
+            ShowStatus("✅ Пароль успішно змінено! Наступна синхронізація перезапише хмару новим ключем.");
+        };
+
+        changePwdVm.Cancelled += () =>
+        {
+            ChangePasswordViewModel = null;
+        };
+
+        ChangePasswordViewModel = changePwdVm;
     }
 
     // ── Conflict dialog helper ────────────────────────────────────────────────
