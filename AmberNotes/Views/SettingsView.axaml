@@ -236,28 +236,56 @@
                        BorderThickness="1" />
             </StackPanel>
 
-            <!-- Sync Now button -->
-            <Button Content="🔄 Синхронізувати зараз"
-                    Command="{Binding SyncNowCommand}"
-                    IsEnabled="{Binding IsNotBusy}"
-                    Padding="18,10"
-                    CornerRadius="8"
-                    HorizontalAlignment="Left">
-              <Button.Styles>
-                <Style Selector="Button">
-                  <Setter Property="Background"    Value="{DynamicResource AppPrimary}" />
-                  <Setter Property="Foreground"    Value="{DynamicResource AppOnPrimary}" />
-                  <Setter Property="BorderThickness" Value="0" />
-                  <Setter Property="FontWeight"    Value="SemiBold" />
-                </Style>
-                <Style Selector="Button:pointerover /template/ ContentPresenter">
-                  <Setter Property="Opacity" Value="0.85" />
-                </Style>
-                <Style Selector="Button:disabled /template/ ContentPresenter">
-                  <Setter Property="Opacity" Value="0.45" />
-                </Style>
-              </Button.Styles>
-            </Button>
+            <!-- Sync Now + Cloud Explorer buttons row -->
+            <StackPanel Orientation="Horizontal" Spacing="12">
+
+              <Button Content="🔄 Синхронізувати зараз"
+                      Command="{Binding SyncNowCommand}"
+                      IsEnabled="{Binding IsNotBusy}"
+                      Padding="18,10"
+                      CornerRadius="8">
+                <Button.Styles>
+                  <Style Selector="Button">
+                    <Setter Property="Background"    Value="{DynamicResource AppPrimary}" />
+                    <Setter Property="Foreground"    Value="{DynamicResource AppOnPrimary}" />
+                    <Setter Property="BorderThickness" Value="0" />
+                    <Setter Property="FontWeight"    Value="SemiBold" />
+                  </Style>
+                  <Style Selector="Button:pointerover /template/ ContentPresenter">
+                    <Setter Property="Opacity" Value="0.85" />
+                  </Style>
+                  <Style Selector="Button:disabled /template/ ContentPresenter">
+                    <Setter Property="Opacity" Value="0.45" />
+                  </Style>
+                </Button.Styles>
+              </Button>
+
+              <!-- Cloud Explorer button: visible only when Google is connected -->
+              <Button Content="☁ Переглянути вміст хмари"
+                      Command="{Binding OpenCloudExplorerCommand}"
+                      IsEnabled="{Binding IsNotBusy}"
+                      IsVisible="{Binding IsGoogleConnected}"
+                      Padding="18,10"
+                      CornerRadius="8">
+                <ToolTip.Tip>Amber Cloud Explorer — аудит файлів у Google Drive AppData</ToolTip.Tip>
+                <Button.Styles>
+                  <Style Selector="Button">
+                    <Setter Property="Background"    Value="Transparent" />
+                    <Setter Property="Foreground"    Value="{DynamicResource AppPrimary}" />
+                    <Setter Property="BorderBrush"   Value="{DynamicResource AppPrimary}" />
+                    <Setter Property="BorderThickness" Value="1" />
+                    <Setter Property="FontWeight"    Value="Medium" />
+                  </Style>
+                  <Style Selector="Button:pointerover /template/ ContentPresenter">
+                    <Setter Property="Background" Value="{DynamicResource AppSurfaceVariant}" />
+                  </Style>
+                  <Style Selector="Button:disabled /template/ ContentPresenter">
+                    <Setter Property="Opacity" Value="0.45" />
+                  </Style>
+                </Button.Styles>
+              </Button>
+
+            </StackPanel>
 
             <!-- Privacy note -->
             <TextBlock TextWrapping="Wrap"
@@ -396,6 +424,9 @@
             </DataTemplate>
             <DataTemplate DataType="{x:Type vm:ChangePasswordViewModel}">
               <views:ChangePasswordView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:CloudExplorerViewModel}">
+              <views:CloudExplorerView />
             </DataTemplate>
           </ContentControl.DataTemplates>
         </ContentControl>

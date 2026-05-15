@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -8,6 +9,22 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace AmberNotes.Services;
+
+// ── Cloud Explorer DTO ────────────────────────────────────────────────────────
+
+/// <summary>
+/// Metadata of a single file in Google Drive appDataFolder.
+/// Used by CloudExplorerViewModel for the read-only audit view.
+/// </summary>
+public sealed record CloudFileInfo(
+    string   DriveId,
+    string   FileName,
+    /// <summary>Note UUID extracted from "note{UUID}.json.enc"; null for salt / unknown files.</summary>
+    string?  NoteId,
+    /// <summary>True when FileName == "ambernotes.salt".</summary>
+    bool     IsSalt,
+    long     SizeBytes,
+    DateTime ModifiedTime);
 
 /// <summary>
 /// Google Drive implementation of <see cref="ICloudStorageService"/>.
@@ -211,6 +228,83 @@ public class GoogleDriveService : ICloudStorageService
             try { await DeleteFileByIdAsync(driveId, ct); }
             catch { /* best-effort per file */ }
         }
+    }
+
+    // ── Cloud Explorer: full inventory with metadata ───────────────────────────
+
+    /// <summary>
+    /// Lists ALL files in appDataFolder (salt + note files) with their full metadata:
+    /// id, name, size, modifiedTime.
+    ///
+    /// Handles nextPageToken pagination — guaranteed to return every file even when
+    /// the folder contains more than 100 items.
+    ///
+    /// Used exclusively by CloudExplorerViewModel (read-only audit).
+    /// </summary>
+    public async Task<List<CloudFileInfo>> ListAllFilesWithDetailsAsync(CancellationToken ct = default)
+    {
+        await EnsureTokenFreshAsync(ct);
+
+        var result      = new List<CloudFileInfo>();
+        string? token   = null;
+
+        do
+        {
+            var url = $"{DriveFilesBase}?spaces={AppDataFolderSpace}" +
+                      $"&fields=nextPageToken,files(id,name,size,modifiedTime)" +
+                      $"&pageSize=100" +
+                      (token is not null ? $"&pageToken={Uri.EscapeDataString(token)}" : "");
+
+            using var req  = BuildRequest(HttpMethod.Get, url);
+            using var resp = await _http.SendAsync(req, ct);
+            resp.EnsureSuccessStatusCode();
+
+            var json = await resp.Content.ReadAsStringAsync(ct);
+            System.Diagnostics.Debug.WriteLine($"[CloudExplorer] API page response: {json[..Math.Min(json.Length, 500)]}");
+
+            var doc = JsonDocument.Parse(json);
+
+            if (doc.RootElement.TryGetProperty("files", out var files))
+            {
+                foreach (var file in files.EnumerateArray())
+                {
+                    var driveId  = file.GetProperty("id").GetString()   ?? "";
+                    var name     = file.GetProperty("name").GetString() ?? "";
+
+                    // size may be absent for empty files or folders
+                    var sizeStr  = file.TryGetProperty("size", out var szProp) ? szProp.GetString() : null;
+                    long sizeBytes = long.TryParse(sizeStr, out var sb) ? sb : 0L;
+
+                    // modifiedTime is RFC 3339 / ISO 8601
+                    var modStr = file.TryGetProperty("modifiedTime", out var modProp)
+                                 ? modProp.GetString()
+                                 : null;
+                    DateTime modifiedTime = DateTime.TryParse(modStr, null,
+                        DateTimeStyles.RoundtripKind, out var dt)
+                        ? dt
+                        : DateTime.UtcNow;
+
+                    bool    isSalt = string.Equals(name, SaltFileName, StringComparison.Ordinal);
+                    string? noteId = null;
+
+                    if (!isSalt && name.StartsWith(NoteFilePrefix, StringComparison.Ordinal)
+                                && name.EndsWith(NoteFileExt, StringComparison.Ordinal))
+                    {
+                        noteId = name[NoteFilePrefix.Length..^NoteFileExt.Length];
+                    }
+
+                    result.Add(new CloudFileInfo(driveId, name, noteId, isSalt, sizeBytes, modifiedTime));
+                }
+            }
+
+            token = doc.RootElement.TryGetProperty("nextPageToken", out var nt)
+                    ? nt.GetString()
+                    : null;
+
+        } while (token is not null);
+
+        System.Diagnostics.Debug.WriteLine($"[CloudExplorer] Total files fetched from Drive: {result.Count}");
+        return result;
     }
 
     // ── Low-level Drive helpers ───────────────────────────────────────────────

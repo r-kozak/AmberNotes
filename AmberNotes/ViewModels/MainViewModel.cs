@@ -174,6 +174,7 @@ public partial class MainViewModel : ViewModelBase
             _privateDbService,
             _cryptoSvc,
             _appSettings,
+            _publicNoteRepo,
             GoBackToList);
         CurrentPage = settingsVm;
     }

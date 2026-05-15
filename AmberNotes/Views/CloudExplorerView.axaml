@@ -1,0 +1,333 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:AmberNotes.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="620" d:DesignHeight="640"
+             x:Class="AmberNotes.Views.CloudExplorerView"
+             x:DataType="vm:CloudExplorerViewModel">
+
+  <!--
+    ═══════════════════════════════════════════════════════════════════════
+    CloudExplorerView — Amber Cloud Explorer (v0.6, Step 31)
+
+    A "warm audit" of the user's Google Drive appDataFolder.
+    Read-only — shows every encrypted brick with its sync status.
+
+    Layout (card overlay, max-width 580):
+      [Header]   Title + close button
+      [Stats]    Files count · cloud size · status summary legend
+      [Content]  ListBox of CloudFileItem rows (or empty/error state)
+      [Footer]   Refresh button
+    ═══════════════════════════════════════════════════════════════════════
+  -->
+
+  <!-- Root card: fixed max-width, amber-tinted border -->
+  <Border Background="{DynamicResource AppSurface}"
+          CornerRadius="14"
+          MaxWidth="580"
+          MinWidth="340"
+          BorderBrush="{DynamicResource AppBorder}"
+          BorderThickness="1"
+          Padding="0"
+          ClipToBounds="True">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto">
+
+      <!-- ══ Header ══════════════════════════════════════════════════════ -->
+      <Border Grid.Row="0"
+              Background="{DynamicResource AppToolbar}"
+              Padding="20,16">
+        <Grid ColumnDefinitions="*,Auto">
+
+          <!-- Title block -->
+          <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+            <TextBlock Text="☁" FontSize="20" VerticalAlignment="Center" />
+            <StackPanel Spacing="2" VerticalAlignment="Center">
+              <TextBlock Text="Amber Cloud Explorer"
+                         FontSize="15"
+                         FontWeight="Bold"
+                         Foreground="{DynamicResource AppOnBackground}" />
+              <TextBlock Text="Аудит хмарного сховища (тільки читання)"
+                         FontSize="11"
+                         Foreground="{DynamicResource AppSubtext}" />
+            </StackPanel>
+          </StackPanel>
+
+          <!-- Close button -->
+          <Button Grid.Column="1"
+                  Content="✕"
+                  Command="{Binding CloseCommand}"
+                  VerticalAlignment="Center"
+                  Width="30" Height="30"
+                  Padding="0"
+                  CornerRadius="6">
+            <Button.Styles>
+              <Style Selector="Button">
+                <Setter Property="Background"      Value="Transparent" />
+                <Setter Property="Foreground"      Value="{DynamicResource AppSubtext}" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="FontSize"        Value="14" />
+              </Style>
+              <Style Selector="Button:pointerover /template/ ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource AppSurfaceVariant}" />
+              </Style>
+            </Button.Styles>
+          </Button>
+
+        </Grid>
+      </Border>
+
+      <!-- ══ Stats bar ═══════════════════════════════════════════════════ -->
+      <Border Grid.Row="1"
+              Background="{DynamicResource AppBackground}"
+              BorderBrush="{DynamicResource AppDivider}"
+              BorderThickness="0,1,0,1"
+              Padding="20,12">
+        <StackPanel Spacing="8">
+
+          <!-- File count + size row -->
+          <StackPanel Orientation="Horizontal" Spacing="20">
+
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <TextBlock Text="📁"
+                         FontSize="13"
+                         VerticalAlignment="Center" />
+              <TextBlock FontSize="12"
+                         Foreground="{DynamicResource AppSubtext}"
+                         VerticalAlignment="Center">
+                <Run Text="У хмарі: " />
+                <Run Text="{Binding TotalFilesCount}"
+                     FontWeight="SemiBold"
+                     Foreground="{DynamicResource AppOnSurface}" />
+                <Run Text=" файлів" />
+              </TextBlock>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <TextBlock Text="💾"
+                         FontSize="13"
+                         VerticalAlignment="Center" />
+              <TextBlock FontSize="12"
+                         Foreground="{DynamicResource AppSubtext}"
+                         VerticalAlignment="Center">
+                <Run Text="Обсяг: " />
+                <Run Text="{Binding TotalCloudSize}"
+                     FontWeight="SemiBold"
+                     Foreground="{DynamicResource AppOnSurface}" />
+              </TextBlock>
+            </StackPanel>
+
+          </StackPanel>
+
+          <!-- Status summary legend -->
+          <TextBlock Text="{Binding StatusSummary}"
+                     FontSize="13"
+                     Foreground="{DynamicResource AppOnSurface}"
+                     IsVisible="{Binding HasItems}" />
+
+          <!-- Progress bar (during load) -->
+          <ProgressBar IsIndeterminate="True"
+                       Height="2"
+                       IsVisible="{Binding IsBusy}"
+                       Foreground="{DynamicResource AppPrimary}"
+                       Background="Transparent"
+                       Margin="0,2,0,0" />
+
+        </StackPanel>
+      </Border>
+
+      <!-- ══ Content area ════════════════════════════════════════════════ -->
+      <Border Grid.Row="2"
+              MinHeight="200"
+              MaxHeight="360"
+              Background="{DynamicResource AppBackground}">
+        <Grid>
+
+          <!-- Error state -->
+          <Border Padding="20"
+                  IsVisible="{Binding HasError}"
+                  VerticalAlignment="Center"
+                  HorizontalAlignment="Center">
+            <StackPanel Spacing="8" HorizontalAlignment="Center">
+              <TextBlock Text="⚠"
+                         FontSize="28"
+                         HorizontalAlignment="Center"
+                         Foreground="{DynamicResource AppPrimary}" />
+              <TextBlock Text="{Binding ErrorMessage}"
+                         FontSize="13"
+                         TextWrapping="Wrap"
+                         MaxWidth="400"
+                         HorizontalAlignment="Center"
+                         TextAlignment="Center"
+                         Foreground="{DynamicResource AppSubtext}" />
+            </StackPanel>
+          </Border>
+
+          <!-- Empty / initial state -->
+          <Border Padding="20"
+                  IsVisible="{Binding !HasItems}"
+                  VerticalAlignment="Center"
+                  HorizontalAlignment="Center">
+            <StackPanel Spacing="8"
+                        HorizontalAlignment="Center"
+                        IsVisible="{Binding !HasError}">
+              <TextBlock Text="☁"
+                         FontSize="36"
+                         Opacity="0.35"
+                         HorizontalAlignment="Center"
+                         Foreground="{DynamicResource AppSubtext}" />
+              <TextBlock Text="Натисніть «Оновити» для завантаження даних"
+                         FontSize="13"
+                         Opacity="0.6"
+                         HorizontalAlignment="Center"
+                         TextAlignment="Center"
+                         Foreground="{DynamicResource AppSubtext}" />
+            </StackPanel>
+          </Border>
+
+          <!-- Item list -->
+          <ListBox ItemsSource="{Binding CloudItems}"
+                   Background="Transparent"
+                   BorderThickness="0"
+                   ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                   IsVisible="{Binding HasItems}"
+                   Padding="0">
+
+            <ListBox.Styles>
+              <!-- Remove default ListBoxItem selection highlight -->
+              <Style Selector="ListBoxItem">
+                <Setter Property="Padding"          Value="0" />
+                <Setter Property="Background"       Value="Transparent" />
+                <Setter Property="BorderThickness"  Value="0" />
+                <Setter Property="Cursor"           Value="Arrow" />
+              </Style>
+              <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+                <Setter Property="Background" Value="Transparent" />
+              </Style>
+              <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+                <Setter Property="Background" Value="{DynamicResource AppSurfaceVariant}" />
+              </Style>
+            </ListBox.Styles>
+
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <!--
+                  Row layout (4 columns):
+                  [Status icon + tooltip] | [Name] | [Size] | [Date]
+                -->
+                <Border Padding="16,10"
+                        BorderBrush="{DynamicResource AppDivider}"
+                        BorderThickness="0,0,0,1">
+                  <Grid ColumnDefinitions="36,*,70,100">
+
+                    <!-- Status icon with tooltip -->
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding StatusIcon}"
+                               FontSize="16"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Center"
+                               Cursor="Help">
+                      <ToolTip.Tip>
+                        <Border Background="{DynamicResource AppSurface}"
+                                BorderBrush="{DynamicResource AppBorder}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="14,10"
+                                MaxWidth="320">
+                          <TextBlock Text="{Binding StatusTooltip}"
+                                     FontSize="12"
+                                     Foreground="{DynamicResource AppOnSurface}"
+                                     TextWrapping="Wrap" />
+                        </Border>
+                      </ToolTip.Tip>
+                    </TextBlock>
+
+                    <!-- File name + status label -->
+                    <StackPanel Grid.Column="1"
+                                Spacing="2"
+                                VerticalAlignment="Center"
+                                Margin="0,0,12,0">
+                      <TextBlock Text="{Binding FileName}"
+                                 FontSize="13"
+                                 FontWeight="Medium"
+                                 Foreground="{DynamicResource AppOnSurface}"
+                                 TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding StatusLabel}"
+                                 FontSize="11"
+                                 Foreground="{DynamicResource AppSubtext}" />
+                    </StackPanel>
+
+                    <!-- File size -->
+                    <TextBlock Grid.Column="2"
+                               Text="{Binding SizeFormatted}"
+                               FontSize="12"
+                               Foreground="{DynamicResource AppSubtext}"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Right"
+                               Margin="0,0,12,0" />
+
+                    <!-- Last modified date -->
+                    <TextBlock Grid.Column="3"
+                               Text="{Binding ModifiedDateFormatted}"
+                               FontSize="11"
+                               Foreground="{DynamicResource AppSubtext}"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Right" />
+
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+
+          </ListBox>
+
+        </Grid>
+      </Border>
+
+      <!-- ══ Footer ══════════════════════════════════════════════════════ -->
+      <Border Grid.Row="3"
+              Background="{DynamicResource AppSurface}"
+              BorderBrush="{DynamicResource AppDivider}"
+              BorderThickness="0,1,0,0"
+              Padding="20,14">
+        <Grid ColumnDefinitions="*,Auto">
+
+          <!-- Privacy note -->
+          <TextBlock Grid.Column="0"
+                     Text="🔒 Лише читання. Дані не змінюються."
+                     FontSize="11"
+                     Foreground="{DynamicResource AppSubtext}"
+                     VerticalAlignment="Center" />
+
+          <!-- Refresh button -->
+          <Button Grid.Column="1"
+                  Content="🔄 Оновити"
+                  Command="{Binding RefreshCloudCommand}"
+                  IsEnabled="{Binding IsNotBusy}"
+                  Padding="16,8"
+                  CornerRadius="8">
+            <Button.Styles>
+              <Style Selector="Button">
+                <Setter Property="Background"    Value="{DynamicResource AppPrimary}" />
+                <Setter Property="Foreground"    Value="{DynamicResource AppOnPrimary}" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="FontWeight"    Value="SemiBold" />
+                <Setter Property="FontSize"      Value="13" />
+              </Style>
+              <Style Selector="Button:pointerover /template/ ContentPresenter">
+                <Setter Property="Opacity" Value="0.85" />
+              </Style>
+              <Style Selector="Button:disabled /template/ ContentPresenter">
+                <Setter Property="Opacity" Value="0.45" />
+              </Style>
+            </Button.Styles>
+          </Button>
+
+        </Grid>
+      </Border>
+
+    </Grid>
+  </Border>
+
+</UserControl>

@@ -29,6 +29,7 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly DatabaseService    _privateDb;
     private readonly CryptoService      _cryptoSvc;
     private readonly AppSettingsService _appSettings;
+    private readonly NoteRepository     _publicNoteRepo;
     private readonly Action             _goBack;
 
     // ── Status state ──────────────────────────────────────────────────────────
@@ -89,13 +90,22 @@ public partial class SettingsViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(IsOverlayVisible))]
     private ChangePasswordViewModel? _changePasswordViewModel;
 
+    /// <summary>Cloud Explorer overlay (Amber Cloud Explorer).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CurrentOverlay))]
+    [NotifyPropertyChangedFor(nameof(IsOverlayVisible))]
+    private CloudExplorerViewModel? _cloudExplorerViewModel;
+
     /// <summary>
     /// The currently active overlay (one at a time).
+    /// Priority: ConflictViewModel → ChangePasswordViewModel → CloudExplorerViewModel.
     /// Bound to the ContentControl in SettingsView Layer 1.
     /// DataTemplates in the view resolve ViewModel → View.
     /// </summary>
     public ViewModelBase? CurrentOverlay =>
-        (ViewModelBase?)ConflictViewModel ?? ChangePasswordViewModel;
+        (ViewModelBase?)ConflictViewModel
+        ?? (ViewModelBase?)ChangePasswordViewModel
+        ?? (ViewModelBase?)CloudExplorerViewModel;
 
     public bool IsOverlayVisible => CurrentOverlay is not null;
 
@@ -118,15 +128,17 @@ public partial class SettingsViewModel : ViewModelBase
         DatabaseService    privateDb,
         CryptoService      cryptoSvc,
         AppSettingsService appSettings,
+        NoteRepository     publicNoteRepo,
         Action             goBack)
     {
-        _driveService = driveService;
-        _saltSync     = saltSync;
-        _syncService  = syncService;
-        _privateDb    = privateDb;
-        _cryptoSvc    = cryptoSvc;
-        _appSettings  = appSettings;
-        _goBack       = goBack;
+        _driveService   = driveService;
+        _saltSync       = saltSync;
+        _syncService    = syncService;
+        _privateDb      = privateDb;
+        _cryptoSvc      = cryptoSvc;
+        _appSettings    = appSettings;
+        _publicNoteRepo = publicNoteRepo;
+        _goBack         = goBack;
 
         ShowSetupHint = !GoogleAuthConfig.IsCurrentPlatformConfigured;
         RefreshConnectionState();
@@ -284,6 +296,23 @@ public partial class SettingsViewModel : ViewModelBase
         {
             IsBusy = false;
         }
+    }
+
+    // ── Cloud Explorer command ────────────────────────────────────────────────
+
+    [RelayCommand(CanExecute = nameof(IsGoogleConnected))]
+    private void OpenCloudExplorer()
+    {
+        var explorerVm = new CloudExplorerViewModel(
+            _driveService,
+            _publicNoteRepo,
+            _privateDb,
+            _cryptoSvc,
+            () => CloudExplorerViewModel = null);
+
+        explorerVm.Closed += () => CloudExplorerViewModel = null;
+
+        CloudExplorerViewModel = explorerVm;
     }
 
     // ── Change Password command ───────────────────────────────────────────────

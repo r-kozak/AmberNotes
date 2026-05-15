@@ -97,7 +97,7 @@ MainWindow / AppView
 - [x] **Крок 28: Сервіс синхронізації (Encrypted Gateway)** ✅
 - [x] **Крок 29: Функція зміни Майстер-пароля (Settings)** ✅
 - [x] **Крок 30: Інтеграція в UI (Single-Window)** ✅
-- [ ] **Крок 31: Вікно перегляду файлів хмари і пристрою для синхронізації (Amber Cloud Explorer)**
+- [x] **Крок 31: Вікно перегляду файлів хмари і пристрою для синхронізації (Amber Cloud Explorer)** ✅
 
 ## Журнал сесій (Session Log)
 ### 2026-05-03 — Ініціалізація проєкту
@@ -411,4 +411,55 @@ MainWindow / AppView
 - **Результат:** `dotnet build AmberNotes.Desktop` — **succeeded** ✅ (0 помилок, 0 попереджень)
 - **Статус v0.6:** ЗАВЕРШЕНО ✅
 
-- **Далі:** Крок 31.
+- **Далі:** Крок 32.
+
+### 2026-05-15 — Крок 31: Amber Cloud Explorer (v0.6 завершення)
+
+- **Мета:** Read-only аудит-панель хмарного сховища. Показує кожен зашифрований файл у Google Drive `appDataFolder` з його статусом (Synced / CloudOnly / LocalOnly / PendingDelete / Tombstone / SystemFile).
+
+- **Нові файли (Models/):**
+  - `CloudItemStatus.cs` — enum із 6 статусами та детальними XML-коментарями.
+  - `CloudFileItem.cs` — display-модель рядка списку: `FileName`, `SizeFormatted`, `SizeBytes`, `ModifiedDate`, `Status`. Обчислювані властивості: `StatusIcon` (🟢🔵🟡🔴🪦🟣), `StatusLabel`, `StatusTooltip` — повний опис кожного статусу для підказки при наведенні, `ModifiedDateFormatted`.
+
+- **Оновлено (Services/GoogleDriveService.cs):**
+  - Додано `CloudFileInfo` record: `(DriveId, FileName, NoteId?, IsSalt, SizeBytes, ModifiedTime)`.
+  - Додано метод `ListAllFilesWithDetailsAsync(ct)` — запитує Drive API з полями `id,name,size,modifiedTime`, обробляє `nextPageToken` (пагінація), витягує UUID із назви файлу через `StartsWith/EndsWith`, визначає `IsSalt`. Виводить кожну API-відповідь у `Debug.WriteLine`.
+
+- **Нові файли (ViewModels/):**
+  - `CloudExplorerViewModel.cs` — `ObservableCollection<CloudFileItem> CloudItems`, `IsBusy`, `TotalFilesCount`, `TotalCloudSize`, `StatusSummary`, `HasItems`, `HasError`, `ErrorMessage`.
+  - `RefreshCloudCommand` — 1) мережевий виклик `ListAllFilesWithDetailsAsync` (async, не блокує UI); 2) Join-алгоритм у `Task.Run` (CPU-bound, SQLite). `CloseCommand`.
+  - **Full Outer Join алгоритм (`BuildItems`):**
+    - Читає живі (`GetAll`) та видалені (`GetAllIncludingDeleted`) нотатки з обох репозиторіїв (публічний + приватний, якщо розблокований).
+    - Cloud-файли → `Synced | CloudOnly | PendingDelete | Tombstone`.
+    - Визначення `PendingDelete vs Tombstone`: `cloudFile.ModifiedTime < deletedNote.UpdatedAt` → PendingDelete, інакше → Tombstone.
+    - Salt: якщо є в хмарі → `SystemFile`; якщо є локально, але відсутня в хмарі → `LocalOnly`.
+    - Живі нотатки без cloud-копії → `LocalOnly`.
+    - Видалені локально БЕЗ cloud-присутності → **не відображаються** (per spec).
+    - Сортування: SystemFile → LocalOnly → Synced → CloudOnly → PendingDelete → Tombstone.
+  - Stats: `TotalFilesCount` / `TotalCloudSize` рахуються лише для файлів, що є в хмарі (LocalOnly виключені). Зведений рядок `StatusSummary`: "🟢 N  🔵 N  🟡 N  🔴 N  🪦 N".
+
+- **Нові файли (Views/):**
+  - `CloudExplorerView.axaml` / `.cs` — overlay-картка (MaxWidth=580).
+    - Header: "☁ Amber Cloud Explorer" + кнопка ✕.
+    - Stats bar: кількість файлів у хмарі + обсяг + `StatusSummary`.
+    - Content: `ListBox` (4 колонки: іконка+tooltip / назва+статус-лейбл / розмір / дата).
+    - **Tooltip підказки на іконках:** `ToolTip.Tip` із кастомним `Border`+`TextBlock` для кожного статусу — повний людський опис.
+    - Footer: "🔒 Лише читання." + кнопка "🔄 Оновити".
+    - Empty state / Error state.
+
+- **Оновлено (ViewModels/SettingsViewModel.cs):**
+  - `+NoteRepository _publicNoteRepo` у конструкторі.
+  - `CloudExplorerViewModel? _cloudExplorerViewModel` — третій overlay.
+  - `CurrentOverlay` оновлено: `ConflictViewModel ?? ChangePasswordViewModel ?? CloudExplorerViewModel`.
+  - `OpenCloudExplorerCommand` (`CanExecute = IsGoogleConnected`).
+
+- **Оновлено (ViewModels/MainViewModel.cs):**
+  - `GoToSettings()` передає `_publicNoteRepo` у `SettingsViewModel`.
+
+- **Оновлено (Views/SettingsView.axaml):**
+  - Кнопки "🔄 Синхронізувати зараз" та "☁ Переглянути вміст хмари" в `StackPanel Orientation="Horizontal"`. Кнопка Explorer: стиль з рамкою `AppPrimary`, `IsVisible=IsGoogleConnected`, tooltip.
+  - `DataTemplate: CloudExplorerViewModel → CloudExplorerView` у overlay `ContentControl.DataTemplates`.
+
+- **Результат:** `dotnet build AmberNotes.Desktop` — **succeeded** ✅ (0 помилок, 0 попереджень)
+- **Статус Крок 31:** ЗАВЕРШЕНО ✅
+- **Статус v0.6:** ЗАВЕРШЕНО ✅
