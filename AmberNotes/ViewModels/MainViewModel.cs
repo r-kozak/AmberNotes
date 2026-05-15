@@ -120,8 +120,8 @@ public partial class MainViewModel : ViewModelBase
         // Create the list sub-page (shared Notes collection, callbacks for actions)
         _listVm = new MainListViewModel(
             Notes,
-            navigateToEditor: GoToEditor,
-            deleteNote:       id => NoteRepo.Delete(id));
+            navigateToEditor: GoToEditor,          // string? (UUID or null for new)
+            deleteNote:       id => NoteRepo.Delete(id)); // string UUID soft-delete
 
         CurrentPage = _listVm;
         LoadNotes();
@@ -134,7 +134,7 @@ public partial class MainViewModel : ViewModelBase
     /// On Save → reloads list and goes back.
     /// On Cancel → goes back without changes.
     /// </summary>
-    private void GoToEditor(int? noteId)
+    private void GoToEditor(string? noteId)
     {
         var editVm = new NoteEditViewModel(NoteRepo, BookRepo, noteId);
 

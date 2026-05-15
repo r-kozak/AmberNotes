@@ -4,7 +4,8 @@ using AmberNotes.Models;
 namespace AmberNotes.Services;
 
 /// <summary>
-/// Provides read operations for the Books table.
+/// Provides read operations for the Books table (schema v2 — UUID primary keys).
+/// v0.6: Book.Id is now a string (UUID TEXT).
 /// </summary>
 public class BookRepository
 {
@@ -17,14 +18,14 @@ public class BookRepository
     {
         var books = new List<Book>();
         using var conn = _db.OpenConnection();
-        using var cmd = conn.CreateCommand();
+        using var cmd  = conn.CreateCommand();
         cmd.CommandText = "SELECT Id, Name, IsDefault FROM Books ORDER BY Name;";
         using var reader = cmd.ExecuteReader();
         while (reader.Read())
         {
             books.Add(new Book
             {
-                Id        = reader.GetInt32(0),
+                Id        = reader.GetString(0),   // UUID TEXT (was GetInt32)
                 Name      = reader.GetString(1),
                 IsDefault = reader.GetInt32(2) == 1
             });
@@ -36,17 +37,17 @@ public class BookRepository
     public Book? GetDefault()
     {
         using var conn = _db.OpenConnection();
-        using var cmd = conn.CreateCommand();
+        using var cmd  = conn.CreateCommand();
         cmd.CommandText = """
             SELECT Id, Name, IsDefault FROM Books
-            ORDER BY IsDefault DESC, Id ASC
+            ORDER BY IsDefault DESC, Name ASC
             LIMIT 1;
             """;
         using var reader = cmd.ExecuteReader();
         if (!reader.Read()) return null;
         return new Book
         {
-            Id        = reader.GetInt32(0),
+            Id        = reader.GetString(0),       // UUID TEXT (was GetInt32)
             Name      = reader.GetString(1),
             IsDefault = reader.GetInt32(2) == 1
         };

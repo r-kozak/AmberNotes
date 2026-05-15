@@ -10,11 +10,13 @@ namespace AmberNotes.ViewModels;
 /// <summary>
 /// ViewModel for the note edit/create dialog.
 /// Supports both creating a new note (noteId == null) and editing an existing one.
+///
+/// v0.6: noteId is now a string (UUID) instead of int.
 /// </summary>
 public partial class NoteEditViewModel : ViewModelBase
 {
     private readonly NoteRepository _noteRepo;
-    private readonly int? _noteId; // null = new note
+    private readonly string? _noteId; // null = new note
 
     // ── Bindable fields ───────────────────────────────────────────────────────
 
@@ -65,7 +67,7 @@ public partial class NoteEditViewModel : ViewModelBase
 
     // ── Constructor ───────────────────────────────────────────────────────────
 
-    public NoteEditViewModel(NoteRepository noteRepo, BookRepository bookRepo, int? noteId = null)
+    public NoteEditViewModel(NoteRepository noteRepo, BookRepository bookRepo, string? noteId = null)
     {
         _noteRepo = noteRepo;
         _noteId   = noteId;
@@ -74,11 +76,11 @@ public partial class NoteEditViewModel : ViewModelBase
         foreach (var b in bookRepo.GetAll())
             Books.Add(b);
 
-        if (noteId.HasValue)
+        if (noteId is not null)
         {
             // Edit mode — load existing note
             WindowTitle = "Редагувати нотатку";
-            var note = noteRepo.GetById(noteId.Value);
+            var note = noteRepo.GetById(noteId);
             if (note is not null)
             {
                 Title        = note.Title;
@@ -107,7 +109,7 @@ public partial class NoteEditViewModel : ViewModelBase
 
         var note = new Note
         {
-            Id           = _noteId ?? 0,
+            Id           = _noteId ?? string.Empty, // empty = new; NoteRepository.Create assigns UUID
             Title        = Title.Trim(),
             Content      = Content,
             NoteDateTime = NoteDate ?? DateTime.Today,
@@ -115,7 +117,7 @@ public partial class NoteEditViewModel : ViewModelBase
             BookId       = SelectedBook.Id
         };
 
-        if (_noteId.HasValue)
+        if (_noteId is not null)
             _noteRepo.Update(note);
         else
             _noteRepo.Create(note);
@@ -132,7 +134,7 @@ public partial class NoteEditViewModel : ViewModelBase
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private Book? FindBookById(int id)
+    private Book? FindBookById(string id)
     {
         foreach (var b in Books)
             if (b.Id == id) return b;

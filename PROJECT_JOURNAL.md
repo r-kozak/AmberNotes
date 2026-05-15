@@ -92,7 +92,7 @@ MainWindow / AppView
 - [x] **Крок 25: Navigation Integration.** `MainViewModel.GoToSettingsCommand`, `AppViewModel.SwitchToMain` оновлено з `GoogleDriveService`. ⚙ кнопка в тулбарі `MainView`. `App.axaml` DataTemplate. `App.axaml.cs` — створення + передача сервісів.
 
 **Поточна версія:** v0.6: Sync Foundation & Security Management
-- [ ] **Крок 26: Міграція Бази Даних**
+- [x] **Крок 26: Міграція Бази Даних** ✅
 - [ ] **Крок 27: Криптографічний "Якір" (Salt Sync)**
 - [ ] **Крок 28: Сервіс синхронізації (Encrypted Gateway)**
 - [ ] **Крок 29: Функція зміни Майстер-пароля (Settings)**
@@ -290,5 +290,37 @@ MainWindow / AppView
 - **Результат:** `dotnet build AmberNotes.Desktop` — **succeeded** ✅ (0 помилок)
 - **Статус v0.5:** ЗАВЕРШЕНО ✅
 
-### Наступний крок: версія 0.6: кроки 26-30.
+### 2026-05-15 — Крок 26: Міграція Бази Даних (v0.6 початок)
+
+- **Ключові архітектурні зміни:**
+  - `Books.Id` та `Notes.Id` мігровано з `INTEGER AUTOINCREMENT` → `TEXT (UUID v4)`.
+  - `Notes.BookId` (FK) — з `INTEGER` → `TEXT (UUID)`.
+  - Додано поле `Notes.is_deleted` (soft-delete): метод `Delete()` виставляє прапор + оновлює `UpdatedAt`.
+  - Схема версіонується через `PRAGMA user_version` (0→2).
+
+- **Нові файли:**
+  - `Services/UuidHelper.cs` — `NewV4()` (random) + `NewV5(name)` (deterministic SHA-1, RFC 4122) для безпечної міграції.
+
+- **Оновлено (DatabaseService.cs):**
+  - `Initialize()` тепер перевіряє `user_version` та автоматично вибирає між створенням v2-схеми або міграцією v1→v2.
+  - `MigrateV1ToV2()` — детерміністично генерує UUID v5 для існуючих записів (Books: `"book:{Name}|{OldId}"`, Notes: `"{Title}|{CreatedAt}|{OldId}"`), перебудовує таблиці в транзакції.
+  - `CreateBooksTableV2()` / `CreateNotesTableV2()` — нова схема з UUID PKs та полем `is_deleted`.
+  - `SeedDefaultBook()` — тепер вставляє книгу з UUID v4.
+
+- **Оновлено (NoteRepository.cs):**
+  - `GetAll()` — фільтр `WHERE is_deleted = 0` (приховує soft-deleted).
+  - `GetAllIncludingDeleted()` — для SyncService (Push включає видалені).
+  - `Create()` — генерує UUID v4, `DELETE FROM` замінено на `UPDATE SET is_deleted=1`.
+  - `Delete()` — soft-delete: `is_deleted=1` + `UpdatedAt=UtcNow`.
+  - `HardDelete()` — фізичне видалення (Cloud Wipe).
+  - `Upsert()` — `ON CONFLICT(Id) DO UPDATE WHERE excluded.UpdatedAt > Notes.UpdatedAt` (LWW для merge).
+
+- **Оновлено (BookRepository.cs):** `GetString(0)` замість `GetInt32(0)` для UUID Id.
+
+- **Оновлено ViewModels:**
+  - `NoteEditViewModel.cs` — `int? _noteId` → `string? _noteId`, `FindBookById(string id)`.
+  - `MainListViewModel.cs` — `Action<int?>` / `Action<int>` → `Action<string?>` / `Action<string>`.
+  - `MainViewModel.cs` — `GoToEditor(string? noteId)`.
+
+- **Результат:** `dotnet build AmberNotes.Desktop` — **succeeded** ✅ (0 помилок, 0 попереджень)
 
