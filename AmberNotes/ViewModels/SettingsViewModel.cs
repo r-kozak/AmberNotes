@@ -52,10 +52,19 @@ public partial class SettingsViewModel : ViewModelBase
     private bool _isBusy;
 
     [ObservableProperty]
+    private bool _isSyncing;
+
+    [ObservableProperty]
     private string _statusMessage = "";
 
     [ObservableProperty]
     private bool _hasStatusMessage;
+
+    [ObservableProperty]
+    private string _syncStatusMessage = "";
+
+    [ObservableProperty]
+    private bool _hasSyncStatusMessage;
 
     [ObservableProperty]
     private bool _showSetupHint;
@@ -254,7 +263,8 @@ public partial class SettingsViewModel : ViewModelBase
     private async Task SyncNowAsync(CancellationToken ct)
     {
         IsBusy = true;
-        ShowStatus("Підготовка до синхронізації...");
+        IsSyncing = true;
+        ShowSyncStatus("Підготовка до синхронізації...");
         ShowSyncError(""); // Clear previous error
 
         try
@@ -265,7 +275,7 @@ public partial class SettingsViewModel : ViewModelBase
 
             if (hexKey is null && NeedsSyncPassword)
             {
-                ShowStatus("Надійне шифрування бази...");
+                ShowSyncStatus("Надійне шифрування бази...");
                 hexKey = await Task.Run(
                     () => _cryptoSvc.DeriveKey(SyncPassword), ct);
 
@@ -273,7 +283,7 @@ public partial class SettingsViewModel : ViewModelBase
                 if (!_privateDb.IsNewDatabase && !_privateDb.TryUnlockWithKey(hexKey))
                 {
                     ShowSyncError("❌ Невірний пароль. Перевірте та спробуйте знову.");
-                    ShowStatus("");
+                    ShowSyncStatus("");
                     return;
                 }
 
@@ -285,25 +295,26 @@ public partial class SettingsViewModel : ViewModelBase
             if (hexKey is null)
             {
                 ShowSyncError("❌ Будь ласка, відкрийте Приватне сховище або введіть пароль.");
-                ShowStatus("");
+                ShowSyncStatus("");
                 return;
             }
 
-            ShowStatus("Безпечне вивантаження в хмару...");
+            ShowSyncStatus("Безпечне вивантаження в хмару...");
             var result = await _syncService.SyncAsync(hexKey, ct);
-            ShowStatus(result.Message);
+            ShowSyncStatus(result.Message);
         }
         catch (OperationCanceledException)
         {
-            ShowStatus("Синхронізацію скасовано.");
+            ShowSyncStatus("Синхронізацію скасовано.");
         }
         catch (Exception ex)
         {
-            ShowStatus($"Помилка: {ex.Message}");
+            ShowSyncStatus($"Помилка: {ex.Message}");
         }
         finally
         {
             IsBusy = false;
+            IsSyncing = false;
         }
     }
 
@@ -386,5 +397,11 @@ public partial class SettingsViewModel : ViewModelBase
     {
         SyncErrorMessage    = message;
         HasSyncErrorMessage = !string.IsNullOrEmpty(message);
+    }
+
+    private void ShowSyncStatus(string message)
+    {
+        SyncStatusMessage    = message;
+        HasSyncStatusMessage = !string.IsNullOrEmpty(message);
     }
 }

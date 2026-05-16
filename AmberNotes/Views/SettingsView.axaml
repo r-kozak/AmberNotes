@@ -111,12 +111,18 @@
               </StackPanel>
             </Border>
 
-            <!-- Progress bar (visible during async operations) -->
+            <!-- Progress bar (visible during async operations, but not during sync) -->
             <ProgressBar IsIndeterminate="True"
                          Height="3"
-                         IsVisible="{Binding IsBusy}"
                          Foreground="{DynamicResource AppPrimary}"
-                         Background="Transparent" />
+                         Background="Transparent">
+              <ProgressBar.IsVisible>
+                <MultiBinding Converter="{x:Static BoolConverters.And}">
+                  <Binding Path="IsBusy" />
+                  <Binding Path="IsSyncing" Converter="{x:Static BoolConverters.Not}" />
+                </MultiBinding>
+              </ProgressBar.IsVisible>
+            </ProgressBar>
 
             <!-- Status message -->
             <Border CornerRadius="8"
@@ -249,6 +255,24 @@
                            FontWeight="Medium" />
               </Border>
             </StackPanel>
+
+            <!-- Sync progress bar -->
+            <ProgressBar IsIndeterminate="True"
+                         Height="3"
+                         IsVisible="{Binding IsSyncing}"
+                         Foreground="{DynamicResource AppPrimary}"
+                         Background="Transparent" />
+
+            <!-- Sync status message (success/info) -->
+            <Border CornerRadius="8"
+                    Padding="14,10"
+                    Background="{DynamicResource AppSurfaceVariant}"
+                    IsVisible="{Binding HasSyncStatusMessage}">
+              <TextBlock Text="{Binding SyncStatusMessage}"
+                         TextWrapping="Wrap"
+                         FontSize="13"
+                         Foreground="{DynamicResource AppSubtext}" />
+            </Border>
 
             <!-- Sync Now + Cloud Explorer buttons row -->
             <StackPanel Orientation="Horizontal" Spacing="12">
