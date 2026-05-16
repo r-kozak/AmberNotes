@@ -23,10 +23,10 @@
   <Grid>
 
     <!-- ══ Layer 0: Normal settings content ════════════════════════════ -->
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-      <StackPanel MaxWidth="600"
-                  HorizontalAlignment="Center"
-                  Margin="24,0,24,32"
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+      <StackPanel HorizontalAlignment="Stretch"
+                  Margin="16,0,16,32"
                   Spacing="0">
 
         <!-- ═══════════ HEADER ═════════════════════════════════════════ -->
@@ -67,20 +67,24 @@
           <StackPanel Spacing="20">
 
             <!-- Section title -->
-            <StackPanel Orientation="Horizontal" Spacing="12">
-              <TextBlock Text="☁"
+            <Grid ColumnDefinitions="Auto,*">
+              <TextBlock Grid.Column="0"
+                         Text="☁"
                          FontSize="24"
-                         VerticalAlignment="Center" />
-              <StackPanel Spacing="3" VerticalAlignment="Center">
+                         VerticalAlignment="Center"
+                         Margin="0,0,12,0" />
+              <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
                 <TextBlock Text="Google Drive"
                            FontSize="16"
                            FontWeight="SemiBold"
+                           TextWrapping="Wrap"
                            Foreground="{DynamicResource AppOnSurface}" />
                 <TextBlock Text="Приховане резервне копіювання через AppData папку"
                            FontSize="12"
+                           TextWrapping="Wrap"
                            Foreground="{DynamicResource AppSubtext}" />
               </StackPanel>
-            </StackPanel>
+            </Grid>
 
             <!-- Divider -->
             <Border Height="1"
@@ -90,24 +94,23 @@
             <Border CornerRadius="8"
                     Padding="14,10"
                     Background="{DynamicResource AppSurfaceVariant}">
-              <StackPanel Orientation="Horizontal" Spacing="10">
-                <TextBlock Text="{Binding StatusIcon}"
-                           FontSize="15"
-                           VerticalAlignment="Center" />
-                <TextBlock Text="{Binding StatusText}"
-                           FontSize="14"
-                           FontWeight="Medium"
-                           Foreground="{DynamicResource AppOnSurface}"
-                           VerticalAlignment="Center" />
-                <Border CornerRadius="5"
-                        Padding="8,3"
-                        Background="{DynamicResource AppBackground}"
-                        IsVisible="{Binding IsGoogleConnected}"
-                        VerticalAlignment="Center">
-                  <TextBlock Text="{Binding GoogleEmail}"
-                             FontSize="12"
-                             Foreground="{DynamicResource AppSubtext}" />
-                </Border>
+              <StackPanel Spacing="4">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <TextBlock Text="{Binding StatusIcon}"
+                             FontSize="15"
+                             VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding StatusText}"
+                             FontSize="14"
+                             FontWeight="Medium"
+                             Foreground="{DynamicResource AppOnSurface}"
+                             VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Text="{Binding GoogleEmail}"
+                           FontSize="12"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource AppSubtext}"
+                           IsVisible="{Binding IsGoogleConnected}"
+                           Margin="0,2,0,0" />
               </StackPanel>
             </Border>
 
@@ -136,13 +139,16 @@
             </Border>
 
             <!-- Action buttons -->
-            <StackPanel Orientation="Horizontal" Spacing="12">
+            <Grid ColumnDefinitions="*,12,*">
 
-              <Button Content="{Binding ConnectButtonText}"
+              <Button Grid.Column="0"
+                      Content="{Binding ConnectButtonText}"
                       Command="{Binding ToggleGoogleDriveCommand}"
                       IsEnabled="{Binding IsNotBusy}"
-                      Padding="18,10"
-                      CornerRadius="8">
+                      Padding="12,11"
+                      CornerRadius="8"
+                      HorizontalAlignment="Stretch"
+                      HorizontalContentAlignment="Center">
                 <Button.Styles>
                   <Style Selector="Button">
                     <Setter Property="Background"    Value="{DynamicResource AppPrimary}" />
@@ -162,12 +168,15 @@
                 </Button.Styles>
               </Button>
 
-              <Button Content="Перевірити з'єднання"
+              <Button Grid.Column="2"
+                      Content="Перевірити з'єднання"
                       Command="{Binding TestConnectionCommand}"
                       IsVisible="{Binding IsGoogleConnected}"
                       IsEnabled="{Binding IsNotBusy}"
-                      Padding="18,10"
-                      CornerRadius="8">
+                      Padding="12,11"
+                      CornerRadius="8"
+                      HorizontalAlignment="Stretch"
+                      HorizontalContentAlignment="Center">
                 <Button.Styles>
                   <Style Selector="Button">
                     <Setter Property="Background"    Value="Transparent" />
@@ -185,7 +194,7 @@
                 </Button.Styles>
               </Button>
 
-            </StackPanel>
+            </Grid>
 
             <!-- Privacy note -->
             <TextBlock TextWrapping="Wrap"
@@ -207,20 +216,24 @@
           <StackPanel Spacing="16">
 
             <!-- Title -->
-            <StackPanel Orientation="Horizontal" Spacing="12">
-              <TextBlock Text="🔄"
+            <Grid ColumnDefinitions="Auto,*">
+              <TextBlock Grid.Column="0"
+                         Text="🔄"
                          FontSize="22"
-                         VerticalAlignment="Center" />
-              <StackPanel Spacing="3" VerticalAlignment="Center">
+                         VerticalAlignment="Center"
+                         Margin="0,0,12,0" />
+              <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
                 <TextBlock Text="Синхронізація"
                            FontSize="16"
                            FontWeight="SemiBold"
+                           TextWrapping="Wrap"
                            Foreground="{DynamicResource AppOnSurface}" />
                 <TextBlock Text="Зашифроване двостороннє резервне копіювання нотаток у хмарі"
                            FontSize="12"
+                           TextWrapping="Wrap"
                            Foreground="{DynamicResource AppSubtext}" />
               </StackPanel>
-            </StackPanel>
+            </Grid>
 
             <!-- Divider -->
             <Border Height="1" Background="{DynamicResource AppDivider}" />
@@ -275,13 +288,16 @@
             </Border>
 
             <!-- Sync Now + Cloud Explorer buttons row -->
-            <StackPanel Orientation="Horizontal" Spacing="12">
+            <Grid ColumnDefinitions="*,12,*">
 
-              <Button Content="🔄 Синхронізувати зараз"
+              <Button Grid.Column="0"
+                      Content="🔄 Синхронізувати зараз"
                       Command="{Binding SyncNowCommand}"
                       IsEnabled="{Binding IsNotBusy}"
-                      Padding="18,10"
-                      CornerRadius="8">
+                      Padding="12,11"
+                      CornerRadius="8"
+                      HorizontalAlignment="Stretch"
+                      HorizontalContentAlignment="Center">
                 <Button.Styles>
                   <Style Selector="Button">
                     <Setter Property="Background"    Value="{DynamicResource AppPrimary}" />
@@ -299,13 +315,20 @@
               </Button>
 
               <!-- Cloud Explorer button: visible only when Google is connected -->
-              <Button Content="☁ Переглянути вміст хмари"
+              <Button Grid.Column="2"
                       Command="{Binding OpenCloudExplorerCommand}"
                       IsEnabled="{Binding IsNotBusy}"
                       IsVisible="{Binding IsGoogleConnected}"
-                      Padding="18,10"
-                      CornerRadius="8">
+                      Padding="12,11"
+                      CornerRadius="8"
+                      HorizontalAlignment="Stretch"
+                      HorizontalContentAlignment="Center">
                 <ToolTip.Tip>Amber Cloud Explorer — аудит файлів у Google Drive AppData</ToolTip.Tip>
+                <Button.Content>
+                  <TextBlock Text="☁ Переглянути хмару"
+                             TextWrapping="Wrap"
+                             TextAlignment="Center" />
+                </Button.Content>
                 <Button.Styles>
                   <Style Selector="Button">
                     <Setter Property="Background"    Value="Transparent" />
@@ -323,7 +346,7 @@
                 </Button.Styles>
               </Button>
 
-            </StackPanel>
+            </Grid>
 
             <!-- Privacy note -->
             <TextBlock TextWrapping="Wrap"
@@ -344,20 +367,24 @@
           <StackPanel Spacing="16">
 
             <!-- Title -->
-            <StackPanel Orientation="Horizontal" Spacing="12">
-              <TextBlock Text="🔑"
+            <Grid ColumnDefinitions="Auto,*">
+              <TextBlock Grid.Column="0"
+                         Text="🔑"
                          FontSize="22"
-                         VerticalAlignment="Center" />
-              <StackPanel Spacing="3" VerticalAlignment="Center">
+                         VerticalAlignment="Center"
+                         Margin="0,0,12,0" />
+              <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
                 <TextBlock Text="Безпека"
                            FontSize="16"
                            FontWeight="SemiBold"
+                           TextWrapping="Wrap"
                            Foreground="{DynamicResource AppOnSurface}" />
                 <TextBlock Text="Управління майстер-паролем Приватного сховища"
                            FontSize="12"
+                           TextWrapping="Wrap"
                            Foreground="{DynamicResource AppSubtext}" />
               </StackPanel>
-            </StackPanel>
+            </Grid>
 
             <!-- Divider -->
             <Border Height="1" Background="{DynamicResource AppDivider}" />
@@ -404,16 +431,20 @@
                 IsVisible="{Binding ShowSetupHint}">
           <StackPanel Spacing="14">
 
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <TextBlock Text="📋"
+            <Grid ColumnDefinitions="Auto,*">
+              <TextBlock Grid.Column="0"
+                         Text="📋"
                          FontSize="16"
-                         VerticalAlignment="Center" />
-              <TextBlock Text="Як налаштувати Google Cloud Console"
+                         VerticalAlignment="Center"
+                         Margin="0,0,8,0" />
+              <TextBlock Grid.Column="1"
+                         Text="Як налаштувати Google Cloud Console"
                          FontSize="14"
                          FontWeight="SemiBold"
+                         TextWrapping="Wrap"
                          Foreground="{DynamicResource AppOnBackground}"
                          VerticalAlignment="Center" />
-            </StackPanel>
+            </Grid>
 
             <StackPanel Spacing="8">
               <TextBlock TextWrapping="Wrap" FontSize="12"
@@ -452,10 +483,10 @@
           ZIndex="10">
       <ScrollViewer VerticalScrollBarVisibility="Auto"
                     HorizontalScrollBarVisibility="Disabled"
-                    Padding="24">
+                    Padding="12">
         <ContentControl Content="{Binding CurrentOverlay}"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center">
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Top">
           <ContentControl.DataTemplates>
             <DataTemplate DataType="{x:Type vm:SaltConflictViewModel}">
               <views:SaltConflictView />

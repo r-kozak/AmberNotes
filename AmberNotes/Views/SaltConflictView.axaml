@@ -19,10 +19,9 @@
 
   <Border Background="{DynamicResource AppBackground}"
           CornerRadius="16"
-          Padding="28"
+          Padding="20"
           BorderBrush="{DynamicResource AppBorder}"
-          BorderThickness="1"
-          MaxWidth="580">
+          BorderThickness="1">
 
     <StackPanel Spacing="18">
 
@@ -30,8 +29,9 @@
       <!-- Full conflict header (3 options) -->
       <StackPanel Spacing="5" IsVisible="{Binding !IsEmptyVaultMode}">
         <TextBlock Text="Знайдено дані з іншого пристрою"
-                   FontSize="20"
+                   FontSize="18"
                    FontWeight="Bold"
+                   TextWrapping="Wrap"
                    Foreground="{DynamicResource AppOnBackground}" />
         <TextBlock TextWrapping="Wrap"
                    FontSize="13"
@@ -41,8 +41,9 @@
       <!-- Simplified header (local vault empty — only option 1 shown) -->
       <StackPanel Spacing="5" IsVisible="{Binding IsEmptyVaultMode}">
         <TextBlock Text="☁ Введіть пароль від хмарного сховища"
-                   FontSize="20"
+                   FontSize="18"
                    FontWeight="Bold"
+                   TextWrapping="Wrap"
                    Foreground="{DynamicResource AppOnBackground}" />
         <TextBlock TextWrapping="Wrap"
                    FontSize="13"
@@ -81,13 +82,15 @@
                 Background="{DynamicResource AppSurface}"
                 BorderBrush="{DynamicResource AppBorder}">
           <StackPanel Spacing="10">
-            <StackPanel Orientation="Horizontal" Spacing="10">
+            <Grid ColumnDefinitions="26,*">
               <!-- Radio dot -->
-              <Border Width="18" Height="18"
+              <Border Grid.Column="0"
+                      Width="18" Height="18"
                       CornerRadius="9"
                       BorderThickness="2"
                       BorderBrush="{DynamicResource AppSubtext}"
-                      VerticalAlignment="Center">
+                      VerticalAlignment="Center"
+                      HorizontalAlignment="Center">
                 <Border Width="8" Height="8"
                         CornerRadius="4"
                         Background="{DynamicResource AppPrimary}"
@@ -95,15 +98,16 @@
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center" />
               </Border>
-              <StackPanel Spacing="3" VerticalAlignment="Center">
-                <TextBlock Text="Об'єднати (Далі — використовувати пароль з хмари)"
-                           FontSize="14" FontWeight="SemiBold"
+              <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                <TextBlock Text="Об'єднати (пароль з хмари)"
+                           FontSize="13" FontWeight="SemiBold"
+                           TextWrapping="Wrap"
                            Foreground="{DynamicResource AppOnSurface}" />
-                <TextBlock Text="Нотатки з хмари та цього пристрою будуть об'єднані. Надалі для входу тут знадобиться пароль від іншого пристрою (хмари)."
+                <TextBlock Text="Нотатки об'єднаються. Надалі знадобиться пароль від іншого пристрою."
                            FontSize="12" TextWrapping="Wrap"
                            Foreground="{DynamicResource AppSubtext}" />
               </StackPanel>
-            </StackPanel>
+            </Grid>
             <!-- Password field for option 1 -->
             <StackPanel Spacing="6"
                         IsVisible="{Binding IsOption1Selected}"
@@ -140,12 +144,14 @@
                 Background="{DynamicResource AppSurface}"
                 BorderBrush="{DynamicResource AppBorder}">
           <StackPanel Spacing="10">
-            <StackPanel Orientation="Horizontal" Spacing="10">
-              <Border Width="18" Height="18"
+            <Grid ColumnDefinitions="26,*">
+              <Border Grid.Column="0"
+                      Width="18" Height="18"
                       CornerRadius="9"
                       BorderThickness="2"
                       BorderBrush="{DynamicResource AppSubtext}"
-                      VerticalAlignment="Center">
+                      VerticalAlignment="Center"
+                      HorizontalAlignment="Center">
                 <Border Width="8" Height="8"
                         CornerRadius="4"
                         Background="{DynamicResource AppPrimary}"
@@ -153,15 +159,16 @@
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center" />
               </Border>
-              <StackPanel Spacing="3" VerticalAlignment="Center">
-                <TextBlock Text="Об'єднати (Далі — використовувати поточний пароль)"
-                           FontSize="14" FontWeight="SemiBold"
+              <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                <TextBlock Text="Об'єднати (поточний пароль)"
+                           FontSize="13" FontWeight="SemiBold"
+                           TextWrapping="Wrap"
                            Foreground="{DynamicResource AppOnSurface}" />
-                <TextBlock Text="Нотатки з обох пристроїв будуть об'єднані. Ваш поточний пароль з цього пристрою стане головним для всієї хмари."
+                <TextBlock Text="Нотатки об'єднаються. Ваш поточний пароль стане головним для хмари."
                            FontSize="12" TextWrapping="Wrap"
                            Foreground="{DynamicResource AppSubtext}" />
               </StackPanel>
-            </StackPanel>
+            </Grid>
             <!-- Password field for option 2 (cloud password needed for Pull) -->
             <StackPanel Spacing="6"
                         IsVisible="{Binding IsOption2Selected}"
@@ -199,12 +206,14 @@
                 Background="#1AFF4444"
                 BorderBrush="#66FF4444">
           <StackPanel Spacing="8">
-            <StackPanel Orientation="Horizontal" Spacing="10">
-              <Border Width="18" Height="18"
+            <Grid ColumnDefinitions="26,*">
+              <Border Grid.Column="0"
+                      Width="18" Height="18"
                       CornerRadius="9"
                       BorderThickness="2"
                       BorderBrush="#88FF4444"
-                      VerticalAlignment="Center">
+                      VerticalAlignment="Center"
+                      HorizontalAlignment="Center">
                 <Border Width="8" Height="8"
                         CornerRadius="4"
                         Background="#FF4444"
@@ -212,12 +221,13 @@
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center" />
               </Border>
-              <StackPanel Spacing="3" VerticalAlignment="Center">
-                <TextBlock Text="Скинути хмару (Я не пам'ятаю інший пароль)"
-                           FontSize="14" FontWeight="SemiBold"
-                           Foreground="#FF4444" />
-              </StackPanel>
-            </StackPanel>
+              <TextBlock Grid.Column="1"
+                         Text="Скинути хмару (не пам'ятаю пароль)"
+                         FontSize="13" FontWeight="SemiBold"
+                         TextWrapping="Wrap"
+                         VerticalAlignment="Center"
+                         Foreground="#FF4444" />
+            </Grid>
             <!-- Warning text — always visible on this card -->
             <TextBlock Text="⚠ Увага! Всі нотатки, які є лише в хмарі, будуть назавжди видалені. Хмара буде перезаписана даними з цього пристрою."
                        FontSize="12" TextWrapping="Wrap"
@@ -249,15 +259,16 @@
       </Border>
 
       <!-- ══ Action buttons ═════════════════════════════════════════════ -->
-      <StackPanel Orientation="Horizontal"
-                  Spacing="12"
-                  HorizontalAlignment="Right">
+      <Grid ColumnDefinitions="*,12,*">
 
-        <Button Content="Скасувати"
+        <Button Grid.Column="0"
+                Content="Скасувати"
                 Command="{Binding CancelCommand}"
                 IsEnabled="{Binding IsNotBusy}"
-                Padding="16,9"
-                CornerRadius="8">
+                Padding="16,11"
+                CornerRadius="8"
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center">
           <Button.Styles>
             <Style Selector="Button">
               <Setter Property="Background"      Value="Transparent" />
@@ -271,10 +282,13 @@
           </Button.Styles>
         </Button>
 
-        <Button Content="Підтвердити"
+        <Button Grid.Column="2"
+                Content="Підтвердити"
                 Command="{Binding ConfirmCommand}"
-                Padding="18,9"
-                CornerRadius="8">
+                Padding="16,11"
+                CornerRadius="8"
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center">
           <Button.Styles>
             <Style Selector="Button">
               <Setter Property="Background"      Value="{DynamicResource AppPrimary}" />
@@ -291,7 +305,7 @@
           </Button.Styles>
         </Button>
 
-      </StackPanel>
+      </Grid>
 
     </StackPanel>
   </Border>
