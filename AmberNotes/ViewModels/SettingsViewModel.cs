@@ -40,6 +40,7 @@ public partial class SettingsViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(StatusIcon))]
     [NotifyCanExecuteChangedFor(nameof(TestConnectionCommand))]
     [NotifyCanExecuteChangedFor(nameof(SyncNowCommand))]
+    [NotifyCanExecuteChangedFor(nameof(OpenCloudExplorerCommand))]
     private bool _isGoogleConnected;
 
     [ObservableProperty]
@@ -297,6 +298,12 @@ public partial class SettingsViewModel : ViewModelBase
                             return;
                         }
                     }
+
+                    // Пароль підтверджено — розблокувати та ініціалізувати нове приватне сховище.
+                    // Без цього hexKey не реєструється в DatabaseService і _privateDb.IsUnlocked = false,
+                    // через що SyncService пропустить всі приватні нотатки (не завантажить і не вивантажить).
+                    if (_privateDb.TryUnlockWithKey(hexKey))
+                        _privateDb.Initialize();
                 }
                 else if (!_privateDb.TryUnlockWithKey(hexKey))
                 {

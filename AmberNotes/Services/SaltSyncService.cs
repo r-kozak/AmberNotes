@@ -225,8 +225,12 @@ public sealed class SaltSyncService
     /// <summary>
     /// Verifies the cloud password by trying to decrypt one of the cloud note files.
     ///
-    /// Returns true  → password is correct (or no files to verify against).
-    /// Returns false → decryption failed → wrong password.
+    /// Returns true  → password is correct (or no files to verify against, or only network errors).
+    /// Returns false → AES-GCM tag mismatch / payload too short → definitely wrong password.
+    ///
+    /// IMPORTANT: Only <see cref="System.Security.Cryptography.CryptographicException"/> and
+    /// <see cref="ArgumentException"/> are treated as "wrong password". Network errors and other
+    /// transient failures are skipped (try next file) so a flaky connection never rejects a correct password.
     /// </summary>
     public async Task<bool> VerifyCloudPasswordAsync(
         byte[]            cloudSalt,
@@ -239,6 +243,8 @@ public sealed class SaltSyncService
         if (cloudFiles.Count == 0)
             return true; // No note files to verify against — cannot disprove
 
+        bool anyDownloadSucceeded = false;
+
         foreach (var (_, noteId) in cloudFiles)
         {
             ct.ThrowIfCancellationRequested();
@@ -247,18 +253,34 @@ public sealed class SaltSyncService
                 var encrypted = await _drive.DownloadNoteFileAsync(noteId, ct);
                 if (encrypted is null) continue;
 
-                // Throws on wrong key (AES-GCM authentication tag mismatch)
+                anyDownloadSucceeded = true;
+
+                // Throws CryptographicException on wrong key (AES-GCM authentication tag mismatch)
                 _crypto.DecryptAesGcm(encrypted, hexKey);
                 return true; // At least one file decrypted OK → correct password
             }
             catch (OperationCanceledException) { throw; }
+            catch (System.Security.Cryptography.CryptographicException)
+            {
+                // AES-GCM tag mismatch → key is definitely wrong
+                return false;
+            }
+            catch (ArgumentException)
+            {
+                // Payload too short (< nonce + tag) → data corrupted or wrong key
+                return false;
+            }
             catch
             {
-                return false; // Decryption failed → wrong password
+                // Network / IO / other transient error — skip this file and try the next one.
+                // Do NOT return false here: a network hiccup must never reject a correct password.
             }
         }
 
-        return true; // All downloads failed (network) — can't determine; allow proceeding
+        // Reached here when every file either failed to download (network error) or returned null.
+        // If at least one file was downloaded but none could be decrypted (unexpected path),
+        // be conservative and deny. Otherwise allow (all failures were network-only).
+        return !anyDownloadSucceeded;
     }
 
     // ── Pull helper ───────────────────────────────────────────────────────────
