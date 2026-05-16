@@ -206,6 +206,47 @@ public sealed class SaltSyncService
             await _drive.UploadSaltAsync(localSalt, ct);
     }
 
+    // ── Password verification ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// Verifies the cloud password by trying to decrypt one of the cloud note files.
+    ///
+    /// Returns true  → password is correct (or no files to verify against).
+    /// Returns false → decryption failed → wrong password.
+    /// </summary>
+    public async Task<bool> VerifyCloudPasswordAsync(
+        byte[]            cloudSalt,
+        string            password,
+        CancellationToken ct = default)
+    {
+        var hexKey     = _crypto.DeriveKeyFromSalt(password, cloudSalt);
+        var cloudFiles = await _drive.ListNoteFilesAsync(ct);
+
+        if (cloudFiles.Count == 0)
+            return true; // No note files to verify against — cannot disprove
+
+        foreach (var (_, noteId) in cloudFiles)
+        {
+            ct.ThrowIfCancellationRequested();
+            try
+            {
+                var encrypted = await _drive.DownloadNoteFileAsync(noteId, ct);
+                if (encrypted is null) continue;
+
+                // Throws on wrong key (AES-GCM authentication tag mismatch)
+                _crypto.DecryptAesGcm(encrypted, hexKey);
+                return true; // At least one file decrypted OK → correct password
+            }
+            catch (OperationCanceledException) { throw; }
+            catch
+            {
+                return false; // Decryption failed → wrong password
+            }
+        }
+
+        return true; // All downloads failed (network) — can't determine; allow proceeding
+    }
+
     // ── Pull helper ───────────────────────────────────────────────────────────
 
     private static readonly JsonSerializerOptions _jsonOpts = new()

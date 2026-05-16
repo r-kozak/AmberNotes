@@ -55,6 +55,14 @@ public partial class SaltConflictViewModel : ViewModelBase
     [ObservableProperty]
     private bool _hasStatusMessage;
 
+    // ── Password error (shown inline when wrong password entered) ─────────────
+
+    [ObservableProperty]
+    private string _passwordErrorMessage = "";
+
+    [ObservableProperty]
+    private bool _hasPasswordError;
+
     // ── Selected option ───────────────────────────────────────────────────────
 
     [ObservableProperty]
@@ -75,6 +83,13 @@ public partial class SaltConflictViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ConfirmCommand))]
     private string _cloudPassword = "";
+
+    /// <summary>Clear password error when user starts retyping.</summary>
+    partial void OnCloudPasswordChanged(string value)
+    {
+        HasPasswordError     = false;
+        PasswordErrorMessage = "";
+    }
 
     // ── Constructor ───────────────────────────────────────────────────────────
 
@@ -110,6 +125,7 @@ public partial class SaltConflictViewModel : ViewModelBase
     {
         IsBusy = true;
         HideStatus();
+        ClearPasswordError();
 
         try
         {
@@ -120,7 +136,25 @@ public partial class SaltConflictViewModel : ViewModelBase
                 _ => SaltConflictChoice.HardReset
             };
 
-            // Options 1 and 2 both require the cloud password
+            // ── Step 1: Verify cloud password before making any changes ────────
+            // Only for options 1 and 2 that require a cloud password.
+            if ((SelectedOption == 1 || SelectedOption == 2) && !string.IsNullOrEmpty(CloudPassword))
+            {
+                ShowStatus("Перевірка пароля...");
+                bool isValid = await _saltSync.VerifyCloudPasswordAsync(_conflict.CloudSalt, CloudPassword, ct);
+
+                if (!isValid)
+                {
+                    // Password is wrong — show error, stay in dialog, do NOT resolve
+                    ShowPasswordError("❌ Неправильний пароль. Перевірте та спробуйте знову.");
+                    HideStatus();
+                    return;
+                }
+
+                HideStatus();
+            }
+
+            // ── Step 2: Password OK (or option 3 — no password needed) ────────
             string? pwd = (SelectedOption == 1 || SelectedOption == 2) ? CloudPassword : null;
 
             await _saltSync.ResolveConflictAsync(choice, _conflict.CloudSalt, pwd, ct);
@@ -158,5 +192,17 @@ public partial class SaltConflictViewModel : ViewModelBase
     {
         StatusMessage    = "";
         HasStatusMessage = false;
+    }
+
+    private void ShowPasswordError(string msg)
+    {
+        PasswordErrorMessage = msg;
+        HasPasswordError     = !string.IsNullOrEmpty(msg);
+    }
+
+    private void ClearPasswordError()
+    {
+        PasswordErrorMessage = "";
+        HasPasswordError     = false;
     }
 }

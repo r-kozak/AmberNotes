@@ -227,6 +227,27 @@
         </Border>
       </Button>
 
+      <!-- ══ Password error message ════════════════════════════════════ -->
+      <Border CornerRadius="8"
+              Padding="12,10"
+              Background="#1FFF4444"
+              BorderBrush="#66FF4444"
+              BorderThickness="1"
+              IsVisible="{Binding HasPasswordError}">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <TextBlock Text="⚠"
+                     FontSize="15"
+                     Foreground="#FF6666"
+                     VerticalAlignment="Center" />
+          <TextBlock Text="{Binding PasswordErrorMessage}"
+                     TextWrapping="Wrap"
+                     FontSize="13"
+                     FontWeight="SemiBold"
+                     Foreground="#FF6666"
+                     VerticalAlignment="Center" />
+        </StackPanel>
+      </Border>
+
       <!-- ══ Action buttons ═════════════════════════════════════════════ -->
       <StackPanel Orientation="Horizontal"
                   Spacing="12"
