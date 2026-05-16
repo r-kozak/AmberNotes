@@ -155,9 +155,23 @@ public sealed class SaltSyncService
         if (cloudPassword is not null)
             cloudHexKey = _crypto.DeriveKeyFromSalt(cloudPassword, cloudSalt);
 
-        // Re-key the private vault if it is unlocked and we have a new key
-        if (cloudHexKey is not null && _privateDb.IsUnlocked)
-            _privateDb.Rekey(cloudHexKey);
+        if (cloudHexKey is not null)
+        {
+            if (!_privateDb.IsUnlocked)
+            {
+                // Fresh/new vault: unlock with the cloud key and initialize schema+tables.
+                // TryUnlockWithKey creates the DB file when it doesn't exist yet,
+                // then Initialize() creates the Books/Notes tables.
+                // After this, PullCloudNotesAsync can write private notes into the vault.
+                if (_privateDb.TryUnlockWithKey(cloudHexKey))
+                    _privateDb.Initialize();
+            }
+            else
+            {
+                // Vault was already unlocked with a different (local) key → re-encrypt with cloud key
+                _privateDb.Rekey(cloudHexKey);
+            }
+        }
 
         // Replace local salt file with the cloud salt (local key = cloud key from now on)
         _crypto.ReplaceSaltFromBytes(cloudSalt);

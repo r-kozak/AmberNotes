@@ -279,8 +279,26 @@ public partial class SettingsViewModel : ViewModelBase
                 hexKey = await Task.Run(
                     () => _cryptoSvc.DeriveKey(SyncPassword), ct);
 
-                // Attempt to unlock the private vault with derived key (verify password)
-                if (!_privateDb.IsNewDatabase && !_privateDb.TryUnlockWithKey(hexKey))
+                // Attempt to verify / unlock the private vault with the derived key.
+                if (_privateDb.IsNewDatabase)
+                {
+                    // Fresh vault — DB file doesn't exist yet.
+                    // TryUnlockWithKey would always succeed (creates the file), so we can't
+                    // rely on it for validation. Instead, verify by trying to decrypt a cloud note.
+                    var localSalt = _cryptoSvc.GetSaltBytes();
+                    if (localSalt is not null)
+                    {
+                        ShowSyncStatus("Перевірка пароля...");
+                        var isValid = await _saltSync.VerifyCloudPasswordAsync(localSalt, SyncPassword, ct);
+                        if (!isValid)
+                        {
+                            ShowSyncError("❌ Невірний пароль. Перевірте та спробуйте знову.");
+                            ShowSyncStatus("");
+                            return;
+                        }
+                    }
+                }
+                else if (!_privateDb.TryUnlockWithKey(hexKey))
                 {
                     ShowSyncError("❌ Невірний пароль. Перевірте та спробуйте знову.");
                     ShowSyncStatus("");
@@ -368,6 +386,9 @@ public partial class SettingsViewModel : ViewModelBase
         {
             ConflictViewModel = null;
             ShowStatus($"✅ Конфлікт вирішено. Підключено як {_driveService.ConnectedEmail}.");
+            // Refresh sync-password requirement: vault may now be unlocked after resolution
+            // (e.g. UseCloudPassword on fresh install → SaltSyncService unlocked the vault).
+            NeedsSyncPassword = !_privateDb.IsUnlocked;
         };
 
         conflictVm.Cancelled += () =>
