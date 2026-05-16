@@ -86,6 +86,24 @@ public sealed class SyncService
         if (_settings.PendingCloudWipe)
             return await CloudWipeAndPushAsync(hexKey, ct);
 
+        // Ensure salt is in the cloud before syncing notes (normal mode).
+        // This handles the case where the cloud was wiped externally, or the user
+        // pressed "Sync Now" without reconnecting Drive (salt only uploaded on connect).
+        try
+        {
+            var localSalt = _crypto.GetSaltBytes();
+            if (localSalt is not null)
+            {
+                var cloudSalt = await _drive.DownloadSaltAsync(ct);
+                if (cloudSalt is null)
+                    await _drive.UploadSaltAsync(localSalt, ct);
+            }
+        }
+        catch (Exception ex)
+        {
+            return Fail($"Помилка при перевірці криптографічного якоря: {ex.Message}");
+        }
+
         return await NormalSyncAsync(hexKey, ct);
     }
 
