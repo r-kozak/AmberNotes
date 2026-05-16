@@ -234,6 +234,20 @@
                        Background="{DynamicResource AppBackground}"
                        BorderBrush="{DynamicResource AppBorder}"
                        BorderThickness="1" />
+
+              <!-- Sync error message (specific to password) -->
+              <Border CornerRadius="8"
+                      Padding="12,8"
+                      Background="#22FF5555"
+                      BorderBrush="#44FF5555"
+                      BorderThickness="1"
+                      IsVisible="{Binding HasSyncErrorMessage}">
+                <TextBlock Text="{Binding SyncErrorMessage}"
+                           TextWrapping="Wrap"
+                           FontSize="12"
+                           Foreground="#FFFF6666"
+                           FontWeight="Medium" />
+              </Border>
             </StackPanel>
 
             <!-- Sync Now + Cloud Explorer buttons row -->

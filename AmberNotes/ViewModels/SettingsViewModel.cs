@@ -60,6 +60,12 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private bool _showSetupHint;
 
+    [ObservableProperty]
+    private string _syncErrorMessage = "";
+
+    [ObservableProperty]
+    private bool _hasSyncErrorMessage;
+
     // ── Sync password (shown when private vault is locked and user clicks Sync Now) ──
 
     [ObservableProperty]
@@ -249,6 +255,7 @@ public partial class SettingsViewModel : ViewModelBase
     {
         IsBusy = true;
         ShowStatus("Підготовка до синхронізації...");
+        ShowSyncError(""); // Clear previous error
 
         try
         {
@@ -265,7 +272,8 @@ public partial class SettingsViewModel : ViewModelBase
                 // Attempt to unlock the private vault with derived key (verify password)
                 if (!_privateDb.IsNewDatabase && !_privateDb.TryUnlockWithKey(hexKey))
                 {
-                    ShowStatus("❌ Невірний пароль. Перевірте та спробуйте знову.");
+                    ShowSyncError("❌ Невірний пароль. Перевірте та спробуйте знову.");
+                    ShowStatus("");
                     return;
                 }
 
@@ -276,7 +284,8 @@ public partial class SettingsViewModel : ViewModelBase
 
             if (hexKey is null)
             {
-                ShowStatus("❌ Будь ласка, відкрийте Приватне сховище або введіть пароль.");
+                ShowSyncError("❌ Будь ласка, відкрийте Приватне сховище або введіть пароль.");
+                ShowStatus("");
                 return;
             }
 
@@ -371,5 +380,11 @@ public partial class SettingsViewModel : ViewModelBase
     {
         StatusMessage    = message;
         HasStatusMessage = !string.IsNullOrEmpty(message);
+    }
+
+    private void ShowSyncError(string message)
+    {
+        SyncErrorMessage    = message;
+        HasSyncErrorMessage = !string.IsNullOrEmpty(message);
     }
 }
