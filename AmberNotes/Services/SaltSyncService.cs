@@ -245,12 +245,13 @@ public sealed class SaltSyncService
 
         bool anyDownloadSucceeded = false;
 
-        foreach (var (_, noteId) in cloudFiles)
+        foreach (var (driveId, _) in cloudFiles)
         {
             ct.ThrowIfCancellationRequested();
             try
             {
-                var encrypted = await _drive.DownloadNoteFileAsync(noteId, ct);
+                // Use driveId directly — avoids redundant FindFileIdAsync lookup
+                var encrypted = await _drive.DownloadNoteByDriveIdAsync(driveId, ct);
                 if (encrypted is null) continue;
 
                 anyDownloadSucceeded = true;
@@ -302,12 +303,13 @@ public sealed class SaltSyncService
             var cloudFiles  = await _drive.ListNoteFilesAsync(ct);
             var privateRepo = _privateDb.IsUnlocked ? new NoteRepository(_privateDb) : null;
 
-            foreach (var (_, noteId) in cloudFiles)
+            foreach (var (driveId, _) in cloudFiles)
             {
                 ct.ThrowIfCancellationRequested();
                 try
                 {
-                    var encrypted = await _drive.DownloadNoteFileAsync(noteId, ct);
+                    // Use driveId directly — avoids redundant FindFileIdAsync lookup
+                    var encrypted = await _drive.DownloadNoteByDriveIdAsync(driveId, ct);
                     if (encrypted is null) continue;
 
                     var json  = _crypto.DecryptAesGcm(encrypted, hexKey);

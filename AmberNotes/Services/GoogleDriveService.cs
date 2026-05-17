@@ -148,6 +148,9 @@ public class GoogleDriveService : ICloudStorageService
 
     /// <summary>
     /// Downloads an encrypted note file by note UUID. Returns null if not found.
+    /// NOTE: This performs an extra FindFileIdAsync search call. Prefer
+    /// <see cref="DownloadNoteByDriveIdAsync"/> when the Drive file ID is already known
+    /// (e.g. from <see cref="ListNoteFilesAsync"/>).
     /// </summary>
     public async Task<byte[]?> DownloadNoteFileAsync(string noteId, CancellationToken ct = default)
     {
@@ -156,6 +159,17 @@ public class GoogleDriveService : ICloudStorageService
         var fileId = await FindFileIdAsync(name, ct);
         if (fileId is null) return null;
         return await DownloadFileAsync(fileId, ct);
+    }
+
+    /// <summary>
+    /// Downloads an encrypted note file directly by its Google Drive file ID.
+    /// Avoids the redundant <see cref="FindFileIdAsync"/> lookup — use this when
+    /// the <c>driveId</c> is already known from <see cref="ListNoteFilesAsync"/>.
+    /// </summary>
+    public async Task<byte[]?> DownloadNoteByDriveIdAsync(string driveId, CancellationToken ct = default)
+    {
+        await EnsureTokenFreshAsync(ct);
+        return await DownloadFileAsync(driveId, ct);
     }
 
     /// <summary>
@@ -391,7 +405,12 @@ public class GoogleDriveService : ICloudStorageService
     private async Task EnsureTokenFreshAsync(CancellationToken ct)
     {
         if (_tokens?.IsExpired == true)
-            _tokens = await _auth.RefreshAsync(_tokens, ct);
+        {
+            var refreshed = await _auth.RefreshAsync(_tokens, ct);
+            // Only replace tokens if refresh succeeded — never null out a working token
+            if (refreshed is not null)
+                _tokens = refreshed;
+        }
     }
 
     private HttpRequestMessage BuildRequest(HttpMethod method, string url)
